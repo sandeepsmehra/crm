@@ -19,6 +19,10 @@ import type {
   ContactLogEntry,
   SubmissionRecord
 } from '@/types/crm'
+import { API_ENDPOINTS } from './apiEndpoints'
+export { API_ENDPOINTS } from './apiEndpoints'
+export * from './apiEndpoints'
+
 
 // Environment configuration loaded dynamically from Vite environment variables (.env files)
 export const API_BASE_URL: string = (
@@ -217,60 +221,42 @@ export const http = {
 }
 
 // =============================================================================
-// DOMAIN-SPECIFIC API CLIENTS
+// DOMAIN-SPECIFIC API CLIENTS (Using variables from src/apiEndpoints.ts)
 // =============================================================================
 
 /**
- * 1. Clients API Service (/clients)
+ * 1. Clients API Service
  */
 export const clientsApi = {
-  /**
-   * GET /clients - Retrieve list of clients with optional filtering
-   */
   getAll: (params?: {
     search?: string
     kind?: ClientKind
     type?: string
     limit?: number
     offset?: number
-  }) => http.get<Client[]>('/clients', { params }),
+  }) => http.get<Client[]>(API_ENDPOINTS.CLIENTS.BASE, { params }),
 
-  /**
-   * GET /clients/:id - Retrieve client details by ID
-   */
-  getById: (id: string) => http.get<Client>(`/clients/${encodeURIComponent(id)}`),
+  getById: (id: string) =>
+    http.get<Client>(API_ENDPOINTS.CLIENTS.DETAIL(id)),
 
-  /**
-   * POST /clients - Create a new client record
-   */
-  create: (client: Partial<Client>) => http.post<Client>('/clients', client),
+  create: (client: Partial<Client>) =>
+    http.post<Client>(API_ENDPOINTS.CLIENTS.BASE, client),
 
-  /**
-   * PUT /clients/:id - Update existing client record
-   */
   update: (id: string, client: Partial<Client>) =>
-    http.put<Client>(`/clients/${encodeURIComponent(id)}`, client),
+    http.put<Client>(API_ENDPOINTS.CLIENTS.DETAIL(id), client),
 
-  /**
-   * PATCH /clients/:id - Partially update client record
-   */
   patch: (id: string, client: Partial<Client>) =>
-    http.patch<Client>(`/clients/${encodeURIComponent(id)}`, client),
+    http.patch<Client>(API_ENDPOINTS.CLIENTS.DETAIL(id), client),
 
-  /**
-   * DELETE /clients/:id - Remove client record
-   */
-  delete: (id: string) => http.delete<{ success: boolean; id: string }>(`/clients/${encodeURIComponent(id)}`),
+  delete: (id: string) =>
+    http.delete<{ success: boolean; id: string }>(API_ENDPOINTS.CLIENTS.DETAIL(id)),
 
-  /**
-   * GET /clients/:id/matters - Retrieve matters associated with a client
-   */
   getMatters: (clientId: string) =>
-    http.get<Matter[]>(`/clients/${encodeURIComponent(clientId)}/matters`)
+    http.get<Matter[]>(API_ENDPOINTS.CLIENTS.MATTERS(clientId))
 }
 
 /**
- * 2. Matters API Service (/matters)
+ * 2. Matters API Service
  */
 export const mattersApi = {
   getAll: (params?: {
@@ -280,38 +266,41 @@ export const mattersApi = {
     search?: string
     limit?: number
     offset?: number
-  }) => http.get<Matter[]>('/matters', { params }),
+  }) => http.get<Matter[]>(API_ENDPOINTS.MATTERS.BASE, { params }),
 
-  getById: (id: string) => http.get<Matter>(`/matters/${encodeURIComponent(id)}`),
+  getById: (id: string) =>
+    http.get<Matter>(API_ENDPOINTS.MATTERS.DETAIL(id)),
 
-  create: (matter: Partial<Matter>) => http.post<Matter>('/matters', matter),
+  create: (matter: Partial<Matter>) =>
+    http.post<Matter>(API_ENDPOINTS.MATTERS.BASE, matter),
 
   update: (id: string, matter: Partial<Matter>) =>
-    http.put<Matter>(`/matters/${encodeURIComponent(id)}`, matter),
+    http.put<Matter>(API_ENDPOINTS.MATTERS.DETAIL(id), matter),
 
   patch: (id: string, matter: Partial<Matter>) =>
-    http.patch<Matter>(`/matters/${encodeURIComponent(id)}`, matter),
+    http.patch<Matter>(API_ENDPOINTS.MATTERS.DETAIL(id), matter),
 
-  delete: (id: string) => http.delete<{ success: boolean }>(`/matters/${encodeURIComponent(id)}`),
+  delete: (id: string) =>
+    http.delete<{ success: boolean }>(API_ENDPOINTS.MATTERS.DETAIL(id)),
 
   updateStage: (id: string, stage: MatterStage, stageName?: string) =>
-    http.patch<Matter>(`/matters/${encodeURIComponent(id)}/stage`, { stage, stageName }),
+    http.patch<Matter>(API_ENDPOINTS.MATTERS.STAGE(id), { stage, stageName }),
 
   updateSubmissionDue: (id: string, submissionDue: string) =>
-    http.patch<Matter>(`/matters/${encodeURIComponent(id)}/submission-due`, { submissionDue }),
+    http.patch<Matter>(API_ENDPOINTS.MATTERS.SUBMISSION_DUE(id), { submissionDue }),
 
   recordContact: (matterId: string, contact: ContactLogEntry) =>
-    http.post<Matter>(`/matters/${encodeURIComponent(matterId)}/contacts`, contact),
+    http.post<Matter>(API_ENDPOINTS.MATTERS.CONTACTS(matterId), contact),
 
   recordSubmission: (matterId: string, submission: SubmissionRecord) =>
-    http.post<Matter>(`/matters/${encodeURIComponent(matterId)}/submission`, submission),
+    http.post<Matter>(API_ENDPOINTS.MATTERS.SUBMISSION(matterId), submission),
 
   addDeadline: (matterId: string, deadline: DeadlineItem) =>
-    http.post<Matter>(`/matters/${encodeURIComponent(matterId)}/deadlines`, deadline)
+    http.post<Matter>(API_ENDPOINTS.MATTERS.DEADLINES(matterId), deadline)
 }
 
 /**
- * 3. Appointments API Service (/appointments)
+ * 3. Appointments API Service
  */
 export const appointmentsApi = {
   getAll: (params?: {
@@ -319,100 +308,113 @@ export const appointmentsApi = {
     consultant?: string
     status?: string
     limit?: number
-  }) => http.get<Appointment[]>('/appointments', { params }),
+  }) => http.get<Appointment[]>(API_ENDPOINTS.APPOINTMENTS.BASE, { params }),
 
   getById: (id: number | string) =>
-    http.get<Appointment>(`/appointments/${encodeURIComponent(id)}`),
+    http.get<Appointment>(API_ENDPOINTS.APPOINTMENTS.DETAIL(id)),
 
   create: (appointment: Partial<Appointment>) =>
-    http.post<Appointment>('/appointments', appointment),
+    http.post<Appointment>(API_ENDPOINTS.APPOINTMENTS.BASE, appointment),
 
   update: (id: number | string, appointment: Partial<Appointment>) =>
-    http.put<Appointment>(`/appointments/${encodeURIComponent(id)}`, appointment),
+    http.put<Appointment>(API_ENDPOINTS.APPOINTMENTS.DETAIL(id), appointment),
 
   updateCell: (id: number | string, field: keyof Appointment, value: unknown) =>
-    http.patch<Appointment>(`/appointments/${encodeURIComponent(id)}/cell`, { field, value }),
+    http.patch<Appointment>(API_ENDPOINTS.APPOINTMENTS.CELL(id), { field, value }),
 
   delete: (id: number | string) =>
-    http.delete<{ success: boolean }>(`/appointments/${encodeURIComponent(id)}`)
+    http.delete<{ success: boolean }>(API_ENDPOINTS.APPOINTMENTS.DETAIL(id))
 }
 
 /**
- * 4. Office Tasks API Service (/tasks)
+ * 4. Office Tasks API Service
  */
 export const tasksApi = {
   getAll: (params?: {
     assignedTo?: string
     status?: string
     priority?: string
-  }) => http.get<OfficeTask[]>('/tasks', { params }),
+  }) => http.get<OfficeTask[]>(API_ENDPOINTS.TASKS.BASE, { params }),
 
-  getById: (id: string) => http.get<OfficeTask>(`/tasks/${encodeURIComponent(id)}`),
+  getById: (id: string) =>
+    http.get<OfficeTask>(API_ENDPOINTS.TASKS.DETAIL(id)),
 
-  create: (task: Partial<OfficeTask>) => http.post<OfficeTask>('/tasks', task),
+  create: (task: Partial<OfficeTask>) =>
+    http.post<OfficeTask>(API_ENDPOINTS.TASKS.BASE, task),
 
   update: (id: string, task: Partial<OfficeTask>) =>
-    http.put<OfficeTask>(`/tasks/${encodeURIComponent(id)}`, task),
+    http.put<OfficeTask>(API_ENDPOINTS.TASKS.DETAIL(id), task),
 
   complete: (id: string, result: string, completedBy: string) =>
-    http.post<OfficeTask>(`/tasks/${encodeURIComponent(id)}/complete`, { result, completedBy }),
+    http.post<OfficeTask>(API_ENDPOINTS.TASKS.COMPLETE(id), { result, completedBy }),
 
   reassign: (id: string, assignedTo: string) =>
-    http.patch<OfficeTask>(`/tasks/${encodeURIComponent(id)}/reassign`, { assignedTo }),
+    http.patch<OfficeTask>(API_ENDPOINTS.TASKS.REASSIGN(id), { assignedTo }),
 
   changeStatus: (id: string, status: 'Pending' | 'In Progress' | 'Completed') =>
-    http.patch<OfficeTask>(`/tasks/${encodeURIComponent(id)}/status`, { status }),
+    http.patch<OfficeTask>(API_ENDPOINTS.TASKS.STATUS(id), { status }),
 
-  delete: (id: string) => http.delete<{ success: boolean }>(`/tasks/${encodeURIComponent(id)}`)
+  delete: (id: string) =>
+    http.delete<{ success: boolean }>(API_ENDPOINTS.TASKS.DETAIL(id))
 }
 
 /**
- * 5. Procedural Fairness Letters (PFL) API Service (/pfl)
+ * 5. Procedural Fairness Letters (PFL) API Service
  */
 export const pflApi = {
-  getAll: () => http.get<PFLRecord[]>('/pfl'),
+  getAll: () =>
+    http.get<PFLRecord[]>(API_ENDPOINTS.PFL.BASE),
 
-  getById: (id: string) => http.get<PFLRecord>(`/pfl/${encodeURIComponent(id)}`),
+  getById: (id: string) =>
+    http.get<PFLRecord>(API_ENDPOINTS.PFL.DETAIL(id)),
 
   create: (record: Partial<PFLRecord> & { docsList?: string[] }) =>
-    http.post<PFLRecord>('/pfl', record),
+    http.post<PFLRecord>(API_ENDPOINTS.PFL.BASE, record),
 
   update: (id: string, record: Partial<PFLRecord>) =>
-    http.put<PFLRecord>(`/pfl/${encodeURIComponent(id)}`, record),
+    http.put<PFLRecord>(API_ENDPOINTS.PFL.DETAIL(id), record),
 
-  delete: (id: string) => http.delete<{ success: boolean }>(`/pfl/${encodeURIComponent(id)}`)
+  delete: (id: string) =>
+    http.delete<{ success: boolean }>(API_ENDPOINTS.PFL.DETAIL(id))
 }
 
 /**
- * 6. Deadlines API Service (/deadlines)
+ * 6. Deadlines API Service
  */
 export const deadlinesApi = {
-  getAll: () => http.get<DeadlineItem[]>('/deadlines'),
+  getAll: () =>
+    http.get<DeadlineItem[]>(API_ENDPOINTS.DEADLINES.BASE),
 
   create: (deadline: DeadlineItem & { matterId?: string }) =>
-    http.post<DeadlineItem>('/deadlines', deadline),
+    http.post<DeadlineItem>(API_ENDPOINTS.DEADLINES.BASE, deadline),
 
   resolve: (matterId: string, deadlineIndex: number) =>
-    http.post<{ success: boolean }>(`/matters/${encodeURIComponent(matterId)}/deadlines/${deadlineIndex}/resolve`)
+    http.post<{ success: boolean }>(API_ENDPOINTS.MATTERS.RESOLVE_DEADLINE(matterId, deadlineIndex))
 }
 
 /**
- * 7. Authentication & User Profile API (/auth)
+ * 7. Authentication & User Profile API
  */
 export const authApi = {
   login: (credentials: { username?: string; email?: string; password?: string }) =>
-    http.post<{ access_token: string; token_type: string; user?: unknown }>('/auth/token', credentials),
+    http.post<{ access_token: string; token_type: string; user?: unknown }>(
+      API_ENDPOINTS.AUTH.LOGIN,
+      credentials
+    ),
 
-  me: () => http.get<{ id: string; name: string; role: string; email: string }>('/auth/me'),
+  me: () =>
+    http.get<{ id: string; name: string; role: string; email: string }>(API_ENDPOINTS.AUTH.ME),
 
-  logout: () => http.post<{ success: boolean }>('/auth/logout')
+  logout: () =>
+    http.post<{ success: boolean }>(API_ENDPOINTS.AUTH.LOGOUT)
 }
 
 /**
  * 8. System Health / Connectivity Check
  */
 export const healthApi = {
-  check: () => http.get<{ status: string; version?: string }>('/health')
+  check: () =>
+    http.get<{ status: string; version?: string }>(API_ENDPOINTS.HEALTH.CHECK)
 }
 
 /**
@@ -420,6 +422,7 @@ export const healthApi = {
  */
 export const api = {
   baseUrl: API_BASE_URL,
+  endpoints: API_ENDPOINTS,
   request: apiRequest,
   http,
   clients: clientsApi,
