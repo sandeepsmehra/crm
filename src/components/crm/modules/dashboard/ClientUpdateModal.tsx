@@ -178,20 +178,6 @@ export function ClientUpdateModal({
           </button>
         </div>
 
-        {/* Validation Errors Banner */}
-        {validationErrors.length > 0 && (
-          <div className="mx-6 sm:mx-7 mt-2 p-3 bg-red-50 border border-red-200 rounded-md text-red-800 text-[12.5px] flex items-start gap-2">
-            <AlertCircle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
-            <div>
-              <div className="font-semibold">Please check the following:</div>
-              <ul className="list-disc list-inside mt-0.5 space-y-0.5 text-[12px]">
-                {validationErrors.map((msg, idx) => (
-                  <li key={idx}>{msg}</li>
-                ))}
-              </ul>
-            </div>
-          </div>
-        )}
 
         {/* Form Body */}
         <form noValidate onSubmit={handleSubmit} className="px-6 sm:px-7 pt-3 pb-6 overflow-y-auto flex-1 text-[13.5px]">

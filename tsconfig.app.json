@@ -28,6 +28,5 @@
     "erasableSyntaxOnly": false,
     "noFallthroughCasesInSwitch": true
   },
-  "include": ["src"],
-  "exclude": ["src/components/ui/custom"]
+  "include": ["src"]
 }

@@ -230,20 +230,6 @@ export function AppointmentModal({
           </button>
         </div>
 
-        {/* Validation Errors */}
-        {validationErrors.length > 0 && (
-          <div className="mx-5 mt-4 p-3 bg-red-50 border border-red-200 rounded-md text-red-800 text-[12.5px] flex items-start gap-2">
-            <AlertCircle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
-            <div>
-              <div className="font-semibold">Please fix validation errors:</div>
-              <ul className="list-disc list-inside mt-0.5 space-y-0.5 text-[12px]">
-                {validationErrors.map((msg, idx) => (
-                  <li key={idx}>{msg}</li>
-                ))}
-              </ul>
-            </div>
-          </div>
-        )}
 
         {/* Form Body */}
         <form noValidate onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-4 overflow-y-auto flex-1 text-[13.5px]">

@@ -102,19 +102,6 @@ export function DocumentManagerModal({
 
         {/* Form Body */}
         <form noValidate onSubmit={handleSubmit} className="p-5 space-y-4 overflow-y-auto flex-1 text-[13.5px]">
-          {Object.keys(fieldErrors).length > 0 && (
-            <div className="p-3 bg-red-50 border border-red-200 rounded-lg flex items-start gap-2.5 text-red-700">
-              <AlertCircle className="w-4 h-4 text-red-500 mt-0.5 shrink-0" />
-              <div className="text-[12px] leading-snug">
-                <span className="font-semibold">Please fix the following validation errors:</span>
-                <ul className="list-disc list-inside mt-1 space-y-0.5">
-                  {Object.values(fieldErrors).map((msg, idx) => (
-                    <li key={idx}>{msg}</li>
-                  ))}
-                </ul>
-              </div>
-            </div>
-          )}
 
           <div>
             <label className="block font-semibold text-[#202d2d] mb-1">Document Category</label>

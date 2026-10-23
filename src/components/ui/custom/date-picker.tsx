@@ -193,7 +193,7 @@ export function DatePicker({
                 month={currentMonth}
                 onMonthChange={setCurrentMonth}
                 onSelect={handleDateSelect}
-                disabled={(date) => {
+                disabled={(date: Date) => {
                   if (minDate && date < minDate) return true;
                   if (maxDate && date > maxDate) return true;
                   return false;

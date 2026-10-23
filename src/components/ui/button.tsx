@@ -26,6 +26,7 @@ export const buttonVariants = cva(
         sm: 'h-8 rounded-lg px-3 text-xs',
         lg: 'h-11 rounded-xl px-6 text-base',
         icon: 'h-9 w-9 rounded-lg',
+        'icon-sm': 'h-7 w-7 rounded-lg',
       },
     },
     defaultVariants: {
