@@ -25,6 +25,7 @@ import { hasHardDeadlineSoon } from '@/lib/crmUtils'
 import { NationriseSidebar } from '@/components/crm/layout/NationriseSidebar'
 import { NationriseTopBar } from '@/components/crm/layout/NationriseTopBar'
 import { DemoBanner } from '@/components/crm/layout/DemoBanner'
+import { Toaster, toast } from '@/components/ui/sonner'
 
 // Module Group Components (Views + Related Modals per Module)
 import { DashboardView, PflModal } from '@/components/crm/modules/dashboard'
@@ -144,10 +145,7 @@ export function App() {
 
   // Toast Helper
   const showToast = (msg: string) => {
-    setToastMessage(msg)
-    setTimeout(() => {
-      setToastMessage(null)
-    }, 4500)
+    toast.success(msg)
   }
 
   // Reset Demo Session
@@ -488,7 +486,7 @@ export function App() {
   }
 
   return (
-    <div className="min-h-screen bg-[#f4f6f5] flex text-[#202d2d] relative overflow-x-hidden">
+    <div className="min-h-screen bg-[#f7f9f8] flex text-[#1c2826] relative overflow-x-hidden">
       {/* Navigation Sidebar (Responsive drawer on mobile/tablet, fixed column on desktop) */}
       <NationriseSidebar
         currentView={currentView}
@@ -503,15 +501,15 @@ export function App() {
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col min-w-0">
         <NationriseTopBar
+          currentView={currentView}
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
-          onQuickAction={() => setIsQuickMenuOpen(true)}
           onToggleMobileMenu={() => setIsMobileSidebarOpen(!isMobileSidebarOpen)}
         />
 
-        <DemoBanner onResetDemo={handleResetDemo} />
+        <DemoBanner currentView={currentView} onResetDemo={handleResetDemo} />
 
-        <main className="flex-1 p-3 sm:p-5 md:p-6 lg:p-8 max-w-[2700px] w-full mx-auto transition-all">
+        <main className="flex-1 px-4 sm:px-8 py-5 w-full mx-auto transition-all">
           {/* VIEW ROUTING */}
           {currentView === 'Dashboard' && (
             <DashboardView
@@ -833,12 +831,8 @@ export function App() {
         onAction={handleQuickAction}
       />
 
-      {/* Floating Toast Notification */}
-      {toastMessage && (
-        <div className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-50 max-w-[calc(100vw-2rem)] bg-[#203a30] text-white px-4 sm:px-5 py-3 rounded-lg shadow-xl text-[13px] sm:text-[13.5px] font-medium animate-fade-in border border-[#3b5e50]">
-          {toastMessage}
-        </div>
-      )}
+      {/* Sonner Toast Notification */}
+      <Toaster />
     </div>
   )
 }

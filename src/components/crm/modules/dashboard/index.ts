@@ -1,2 +1,4 @@
-export * from './DashboardView'
-export * from './PflModal'
+export { DashboardView } from './DashboardView'
+export { PflModal } from './PflModal'
+export { ClientUpdateModal } from './ClientUpdateModal'
+export { PersonalReminderModal } from './PersonalReminderModal'

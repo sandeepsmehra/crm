@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react'
 import { Appointment, Client, AppointmentStatus } from '@/types/crm'
 import { APPLICATION_TYPES, CONSULTANTS, TODAY } from '@/data/mockData'
+import { appointmentZodSchema, appointmentYupSchema } from '@/lib/validations'
+import { toast } from '@/components/ui/sonner'
 import { X, AlertCircle } from 'lucide-react'
 
 interface AppointmentModalProps {
@@ -44,6 +46,7 @@ export function AppointmentModal({
   const [source, setSource] = useState('Phone inquiry')
   const [reminder, setReminder] = useState('Pending')
   const [followup, setFollowup] = useState('')
+  const [validationErrors, setValidationErrors] = useState<string[]>([])
 
   useEffect(() => {
     if (existingAppointment) {
@@ -94,20 +97,17 @@ export function AppointmentModal({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-
-    if (hasConflict) {
-      const proceed = confirm(
-        'Warning: This consultant already has an overlapping appointment at this time. Would you like to schedule anyway?'
-      )
-      if (!proceed) return
-    }
+    setValidationErrors([])
 
     let resolvedClientId = clientId
     let createdClient: Client | undefined = undefined
 
     if (isNewClient) {
       if (!newName.trim() || !newPhone.trim()) {
-        return alert('Please enter new client name and phone number.')
+        const msg = 'Please enter new client name and phone number'
+        setValidationErrors([msg])
+        toast.error(msg)
+        return
       }
       resolvedClientId = `C-${clients.length + 1}`
       createdClient = {
@@ -121,6 +121,44 @@ export function AppointmentModal({
       }
     }
 
+    const clientName = createdClient?.name || clients.find((c) => c.id === resolvedClientId)?.name || 'Client'
+    const clientPhone = createdClient?.phone || clients.find((c) => c.id === resolvedClientId)?.phone || '604-555-0100'
+
+    const candidateData = {
+      client: clientName,
+      phone: clientPhone,
+      date,
+      time,
+      consultant,
+      service,
+      notes: notes.trim() || undefined,
+      appointmentType: kind
+    }
+
+    // 1. Zod Validation
+    const zodResult = appointmentZodSchema.safeParse(candidateData)
+    if (!zodResult.success) {
+      const errMsgs = zodResult.error.issues.map((i) => i.message)
+      setValidationErrors(errMsgs)
+      toast.error(errMsgs[0] || 'Validation error')
+      return
+    }
+
+    // 2. Yup Validation
+    try {
+      appointmentYupSchema.validateSync(candidateData, { abortEarly: false })
+    } catch (err: any) {
+      if (err.errors) {
+        setValidationErrors(err.errors)
+        toast.error(err.errors[0])
+        return
+      }
+    }
+
+    if (hasConflict) {
+      toast.warning('Overlapping appointment detected for consultant at this time')
+    }
+
     const appt: Appointment = {
       id: existingAppointment ? existingAppointment.id : Date.now(),
       client: resolvedClientId,
@@ -131,7 +169,7 @@ export function AppointmentModal({
       status,
       confirmation: ['Scheduled', 'Pending'].includes(status) ? 'Pending' : status,
       section,
-      phone: createdClient ? createdClient.phone : clients.find((c) => c.id === resolvedClientId)?.phone || '',
+      phone: clientPhone,
       email: createdClient ? createdClient.email : clients.find((c) => c.id === resolvedClientId)?.email || '',
       source,
       called: existingAppointment ? existingAppointment.called : TODAY,
@@ -149,6 +187,7 @@ export function AppointmentModal({
     }
 
     onSave(appt, createdClient)
+    toast.success(existingAppointment ? 'Appointment updated successfully' : `Booked consultation for ${clientName}`)
     onClose()
   }
 
@@ -156,22 +195,37 @@ export function AppointmentModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-3 sm:p-4">
       <div className="bg-white rounded-xl shadow-2xl border border-[#dfe5e3] w-full max-w-lg overflow-hidden animate-fade-in max-h-[92vh] flex flex-col">
         {/* Header */}
-        <div className="px-4 sm:px-6 py-3.5 sm:py-4 border-b border-[#edf0ee] flex items-center justify-between bg-[#fcfdfd]">
+        <div className="px-5 py-4 border-b border-[#edf0ee] flex items-center justify-between bg-[#fcfdfd]">
           <div>
             <h2 className="text-base sm:text-lg font-bold text-[#12382e]">
-              {existingAppointment ? 'Edit Appointment' : 'Book New Appointment'}
+              {existingAppointment ? 'Edit Appointment' : 'Book Consultation'}
             </h2>
-            <p className="text-[11.5px] sm:text-[12px] text-[#677472]">
-              Reception calendar and consultation booking.
+            <p className="text-[12px] text-[#677472]">
+              Schedule consultation or staff meeting in Vancouver timezone.
             </p>
           </div>
           <button
             onClick={onClose}
-            className="p-1 text-[#8a9895] hover:text-[#202d2d] rounded-md"
+            className="p-1 text-[#8a9895] hover:text-[#202d2d] rounded-md transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
+
+        {/* Validation Errors */}
+        {validationErrors.length > 0 && (
+          <div className="mx-5 mt-4 p-3 bg-red-50 border border-red-200 rounded-md text-red-800 text-[12.5px] flex items-start gap-2">
+            <AlertCircle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
+            <div>
+              <div className="font-semibold">Please fix validation errors:</div>
+              <ul className="list-disc list-inside mt-0.5 space-y-0.5 text-[12px]">
+                {validationErrors.map((msg, idx) => (
+                  <li key={idx}>{msg}</li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        )}
 
         {/* Form Body */}
         <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-4 overflow-y-auto flex-1 text-[13.5px]">

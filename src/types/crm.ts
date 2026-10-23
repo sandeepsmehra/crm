@@ -20,7 +20,9 @@ export interface Client {
   locations?: string
   workers?: string
   receptionAlert?: string
+  preferredLanguage?: string
   createdAt?: string
+  mattersCount?: number
 }
 
 export type DocumentStatus = 
@@ -93,6 +95,7 @@ export type BallHolder =
 
 export interface Matter {
   id: string
+  fileNumber?: string
   clientId: string
   name: string
   type: string
@@ -121,6 +124,7 @@ export interface Matter {
   retained: boolean
   retainedDate: string
   caseOverview: string
+  overview?: string
   submissionDue?: string
   contactsLog?: ContactLogEntry[]
   retainedIntake?: boolean
@@ -237,12 +241,57 @@ export interface PersonalReminder {
   id: string
   text: string
   dueDate: string
-  reminderFor: string
+  dueTime?: string
+  priority?: 'Normal' | 'High' | 'Urgent'
+  person?: string
+  reminderFor?: string
   applicationId?: string
   applicationLabel?: string
-  status: 'Open' | 'Completed'
+  status?: 'Open' | 'Completed'
+  completed?: boolean
   completedBy?: string
   completedAt?: string
+  notes?: string
+}
+
+export interface ClientUpdate {
+  id: string
+  date: string
+  clientName: string
+  applicationType: string
+  updateType: 'Approved' | 'Refused' | 'Documents Requested' | 'Other'
+  checkedBy: string
+  comments: string
+  actionStatus?: 'Not Sent' | 'Pending Further' | 'Sent'
+  status?: 'Not Sent' | 'Pending Further' | 'Sent'
+  actionMethod?: string
+  method?: string
+  sentBy?: string
+  sentAt?: string
+  matterId?: string
+}
+
+export interface NewsArticle {
+  id: string
+  date: string
+  source: string
+  title: string
+  category?: string
+  summary?: string
+  url?: string
+}
+
+export interface DocumentRecord {
+  id: string
+  kind: string
+  label: string
+  customName?: string
+  received: string
+  reviewDue: string
+  status: 'Pending' | 'Verified' | 'Rejected'
+  verifiedBy: string
+  notes?: string
+  fileName?: string
 }
 
 export interface ConsultationRecord {

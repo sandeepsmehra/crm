@@ -5,6 +5,8 @@ import {
   OfficeTask, 
   PFLRecord, 
   PersonalReminder,
+  ClientUpdate,
+  NewsArticle,
   ConsultationRecord,
   DocumentItem,
   StageConfig,
@@ -989,50 +991,111 @@ export const INITIAL_OFFICE_TASKS: OfficeTask[] = [
 export const INITIAL_PFL_RECORDS: PFLRecord[] = [
   {
     id: 'PFL-001',
-    fileNumber: 'WP-782910',
-    clientName: 'Gurpreet Singh',
-    applicationType: 'Work Permit',
-    category: 'Procedural Fairness Letter',
-    actionRequired: 'Respond to officer concerns regarding prior unauthorized employment history',
-    receivedDate: '2026-10-01',
-    deadline: '2026-10-15',
-    owner: 'Inderpreet',
-    comments: 'Obtain statutory declaration from prior employer and paystub records.',
+    fileNumber: 'DEMO-E654321',
+    clientName: 'Omar Siddiqui',
+    applicationType: 'Express Entry PR Application',
+    category: 'Documents Requested',
+    actionRequired: 'Updated police certificate',
+    receivedDate: '2026-10-12',
+    deadline: '2026-10-22',
+    owner: 'Amanpreet',
+    comments: 'Required: Police certificate. Source: IRCC Portal Correspondence Letter',
     status: 'Open'
   },
   {
     id: 'PFL-002',
-    fileNumber: 'SP-109283',
-    clientName: 'Harinder Cheema',
+    fileNumber: 'DEMO-SP98124',
+    clientName: 'Amandeep Singh',
     applicationType: 'Spousal Sponsorship',
-    category: 'Document Request',
-    actionRequired: 'Provide updated national police clearance certificate within 30 days',
-    receivedDate: '2026-09-22',
-    deadline: '2026-10-22',
-    owner: 'Sukhman',
-    comments: 'Client submitted request to Indian High Commission; tracking receipt uploaded.',
+    category: 'PFL',
+    actionRequired: 'Procedural Fairness response letter for relationship timeline',
+    receivedDate: '2026-10-14',
+    deadline: '2026-10-27',
+    owner: 'Inderpreet',
+    comments: 'Provide joint lease agreement and statutory declarations. Required: Affidavits, photos, joint utility invoices',
     status: 'Open'
+  },
+  {
+    id: 'PFL-003',
+    fileNumber: 'DEMO-W123456',
+    clientName: 'Lucas Martin',
+    applicationType: 'PRRA',
+    category: 'PFL',
+    actionRequired: 'Country condition updates and new risk evidence',
+    receivedDate: '2026-10-10',
+    deadline: '2026-10-30',
+    owner: 'Sukhman',
+    comments: 'Respond to new evidence request from officer.',
+    status: 'Open'
+  }
+]
+
+export const INITIAL_CLIENT_UPDATES: ClientUpdate[] = [
+  {
+    id: 'UPD-001',
+    date: '2026-10-17',
+    clientName: 'Ravi Patel',
+    applicationType: 'Spousal Sponsorship',
+    updateType: 'Other',
+    checkedBy: 'Tejinder',
+    comments: 'Acknowledgement of receipt received\nEmailed client',
+    actionStatus: 'Not Sent',
+    actionMethod: 'Email',
+    sentBy: 'Tejinder'
+  },
+  {
+    id: 'UPD-002',
+    date: '2026-10-16',
+    clientName: 'Priya Nair',
+    applicationType: 'Spousal Sponsorship',
+    updateType: 'Other',
+    checkedBy: 'Not checked',
+    comments: 'Biometrics instruction letter received\nClient to be informed',
+    actionStatus: 'Not Sent',
+    actionMethod: 'Email'
   }
 ]
 
 export const INITIAL_PERSONAL_REMINDERS: PersonalReminder[] = [
   {
     id: 'PR-001',
-    text: 'Follow up with General Manager Harinder for Job Bank printouts and invoice receipt.',
-    dueDate: '2026-10-09',
+    text: 'Check abd IRCC news for TRV processing changes',
+    dueDate: '2026-10-19',
     reminderFor: 'Sukhman',
-    applicationId: 'NR-26005',
-    applicationLabel: 'Northstar Millwork Ltd. · LMIA',
+    applicationLabel: 'General reminder',
     status: 'Open'
   },
   {
     id: 'PR-002',
-    text: 'Check GCMS / online IRCC portal for Navdeep Rai AOR confirmation letter.',
-    dueDate: '2026-10-15',
-    reminderFor: 'Sukhman',
-    applicationId: 'NR-26007',
-    applicationLabel: 'Navdeep Rai · H&C',
+    text: 'Renew office professional insurance',
+    dueDate: '2026-10-28',
+    reminderFor: 'Amanpreet',
+    applicationLabel: 'General reminder',
     status: 'Open'
+  }
+]
+
+export const INITIAL_NEWS_ARTICLES: NewsArticle[] = [
+  {
+    id: 'NEWS-001',
+    date: 'October 7, 2026',
+    source: 'IRCC',
+    title: 'IRCC surveys Ukrainian temporary residents',
+    summary: 'Survey on settlement experiences and future immigration intentions in Canada.'
+  },
+  {
+    id: 'NEWS-002',
+    date: 'September 29, 2026',
+    source: 'IRCC',
+    title: 'PRRA eligibility update: Israel and Palestine',
+    summary: 'Updated guidelines for pre-removal risk assessments for affected individuals.'
+  },
+  {
+    id: 'NEWS-003',
+    date: 'September 9, 2026',
+    source: 'IRCC',
+    title: 'Short-term study measure for eligible work permit holders',
+    summary: 'Temporary public policy allowing foreign workers to study without a separate permit.'
   }
 ]
 

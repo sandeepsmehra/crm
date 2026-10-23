@@ -1,8 +1,10 @@
 import React, { useState } from 'react'
 import { PFLRecord, Matter } from '@/types/crm'
+import { pflZodSchema, pflYupSchema } from '@/lib/validations'
+import { toast } from '@/components/ui/sonner'
 import { STAFF_MEMBERS, TODAY } from '@/data/mockData'
 import { addDays } from '@/lib/crmUtils'
-import { X } from 'lucide-react'
+import { X, AlertCircle } from 'lucide-react'
 
 interface PflModalProps {
   isOpen: boolean
@@ -27,6 +29,7 @@ export function PflModal({
   const [comments, setComments] = useState('')
   const [requiredDocs, setRequiredDocs] = useState('')
   const [verifiedCheck, setVerifiedCheck] = useState(false)
+  const [validationErrors, setValidationErrors] = useState<string[]>([])
 
   if (!isOpen) return null
 
@@ -34,13 +37,10 @@ export function PflModal({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    if (!verifiedCheck) {
-      return alert('Please confirm you have checked the deadline against the official correspondence.')
-    }
+    setValidationErrors([])
 
-    const pfl: PFLRecord = {
-      id: `PFL-${Date.now().toString().slice(-4)}`,
-      fileNumber,
+    const candidateData = {
+      fileNumber: fileNumber.trim(),
       clientName: selectedMatter ? selectedMatter.name : 'Client',
       applicationType: selectedMatter ? selectedMatter.type : 'Work Permit',
       category,
@@ -48,12 +48,48 @@ export function PflModal({
       receivedDate,
       deadline,
       owner,
-      comments: comments.trim(),
-      status: 'Open',
-      documents: requiredDocs.split('\n').map((s) => s.trim()).filter(Boolean)
+      comments: comments.trim() || undefined,
+      verifiedCheck
     }
 
-    onSave(pfl, requiredDocs.split('\n').map((s) => s.trim()).filter(Boolean))
+    // 1. Zod Validation
+    const zodResult = pflZodSchema.safeParse(candidateData)
+    if (!zodResult.success) {
+      const errMsgs = zodResult.error.issues.map((i) => i.message)
+      setValidationErrors(errMsgs)
+      toast.error(errMsgs[0] || 'Validation error')
+      return
+    }
+
+    // 2. Yup Validation
+    try {
+      pflYupSchema.validateSync(candidateData, { abortEarly: false })
+    } catch (err: any) {
+      if (err.errors) {
+        setValidationErrors(err.errors)
+        toast.error(err.errors[0])
+        return
+      }
+    }
+
+    const docsList = requiredDocs.split('\n').map((s) => s.trim()).filter(Boolean)
+    const pfl: PFLRecord = {
+      id: `PFL-${Date.now().toString().slice(-4)}`,
+      fileNumber: candidateData.fileNumber,
+      clientName: candidateData.clientName,
+      applicationType: candidateData.applicationType,
+      category: candidateData.category,
+      actionRequired: candidateData.actionRequired,
+      receivedDate: candidateData.receivedDate,
+      deadline: candidateData.deadline,
+      owner: candidateData.owner,
+      comments: candidateData.comments || '',
+      status: 'Open',
+      documents: docsList
+    }
+
+    onSave(pfl, docsList)
+    toast.success(`Government request recorded for ${candidateData.clientName}`)
     onClose()
   }
 
@@ -61,23 +97,38 @@ export function PflModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-3 sm:p-4">
       <div className="bg-white rounded-xl shadow-2xl border border-[#dfe5e3] w-full max-w-lg overflow-hidden animate-fade-in max-h-[92vh] flex flex-col">
         {/* Header */}
-        <div className="px-4 sm:px-6 py-3.5 sm:py-4 border-b border-[#edf0ee] flex items-center justify-between bg-[#fcfdfd]">
+        <div className="px-5 py-4 border-b border-[#edf0ee] flex items-center justify-between bg-[#fcfdfd]">
           <div>
             <h2 className="text-base sm:text-lg font-bold text-[#12382e]">Add Government Request / PFL</h2>
-            <p className="text-[11.5px] sm:text-[12px] text-[#677472]">
+            <p className="text-[12px] text-[#677472]">
               Record procedural fairness letter, IRCC document request, or interview notice.
             </p>
           </div>
           <button
             onClick={onClose}
-            className="p-1 text-[#8a9895] hover:text-[#202d2d] rounded-md"
+            className="p-1 text-[#8a9895] hover:text-[#202d2d] rounded-md transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
+        {/* Validation Errors */}
+        {validationErrors.length > 0 && (
+          <div className="mx-5 mt-4 p-3 bg-red-50 border border-red-200 rounded-md text-red-800 text-[12.5px] flex items-start gap-2">
+            <AlertCircle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
+            <div>
+              <div className="font-semibold">Please fix validation errors:</div>
+              <ul className="list-disc list-inside mt-0.5 space-y-0.5 text-[12px]">
+                {validationErrors.map((msg, idx) => (
+                  <li key={idx}>{msg}</li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        )}
+
         {/* Form Body */}
-        <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-4 overflow-y-auto flex-1 text-[13.5px]">
+        <form onSubmit={handleSubmit} className="p-5 space-y-4 overflow-y-auto flex-1 text-[13.5px]">
           <div>
             <label className="block font-semibold text-[#202d2d] mb-1">Related Application Matter</label>
             <select
@@ -85,9 +136,12 @@ export function PflModal({
               onChange={(e) => {
                 setSelectedMatterId(e.target.value)
                 const m = matters.find((x) => x.id === e.target.value)
-                if (m) setOwner(m.owner)
+                if (m) {
+                  setOwner(m.owner)
+                  setFileNumber(m.fileNumber || m.id)
+                }
               }}
-              className="w-full p-2 border border-[#cbd5d1] rounded-md bg-white outline-none"
+              className="w-full p-2 border border-[#cbd5d1] rounded-md bg-white outline-none focus:border-[#246b54]"
             >
               {matters.map((m) => (
                 <option key={m.id} value={m.id}>
@@ -99,38 +153,41 @@ export function PflModal({
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
+              <label className="block font-semibold text-[#202d2d] mb-1">Government File # / UCI</label>
+              <input
+                type="text"
+                value={fileNumber}
+                onChange={(e) => setFileNumber(e.target.value)}
+                placeholder="e.g. WP-2026-9018"
+                className="w-full p-2 border border-[#cbd5d1] rounded-md bg-white outline-none focus:border-[#246b54]"
+                required
+              />
+            </div>
+            <div>
               <label className="block font-semibold text-[#202d2d] mb-1">Request Category</label>
               <select
                 value={category}
                 onChange={(e) => setCategory(e.target.value)}
-                className="w-full p-2 border border-[#cbd5d1] rounded-md bg-white outline-none"
+                className="w-full p-2 border border-[#cbd5d1] rounded-md bg-white outline-none focus:border-[#246b54]"
               >
-                <option value="Procedural Fairness Letter">Procedural Fairness Letter</option>
-                <option value="Document Request">Document Request</option>
+                <option value="Procedural Fairness Letter">Procedural Fairness Letter (PFL)</option>
+                <option value="Document Request Letter">IRCC Document Request Letter</option>
+                <option value="Medical Request">Medical Request / Additional Medical</option>
                 <option value="Interview Notice">Interview Notice</option>
-                <option value="Additional Information">Additional Information</option>
+                <option value="Biometrics Request">Biometrics Request</option>
               </select>
-            </div>
-            <div>
-              <label className="block font-semibold text-[#202d2d] mb-1">File Number / Reference</label>
-              <input
-                type="text"
-                required
-                value={fileNumber}
-                onChange={(e) => setFileNumber(e.target.value)}
-                className="w-full p-2 border border-[#cbd5d1] rounded-md outline-none"
-              />
             </div>
           </div>
 
           <div>
-            <label className="block font-semibold text-[#202d2d] mb-1">Action Required *</label>
-            <input
-              type="text"
-              required
+            <label className="block font-semibold text-[#202d2d] mb-1">Action Required</label>
+            <textarea
+              rows={2}
               value={actionRequired}
               onChange={(e) => setActionRequired(e.target.value)}
-              className="w-full p-2 border border-[#cbd5d1] rounded-md outline-none"
+              placeholder="Summary of response needed and specific officer concerns..."
+              className="w-full p-2 border border-[#cbd5d1] rounded-md bg-white outline-none focus:border-[#246b54]"
+              required
             />
           </div>
 
@@ -139,82 +196,87 @@ export function PflModal({
               <label className="block font-semibold text-[#202d2d] mb-1">Received Date</label>
               <input
                 type="date"
-                required
                 value={receivedDate}
                 onChange={(e) => setReceivedDate(e.target.value)}
-                className="w-full p-2 border border-[#cbd5d1] rounded-md outline-none"
+                className="w-full p-2 border border-[#cbd5d1] rounded-md bg-white outline-none focus:border-[#246b54]"
+                required
               />
             </div>
             <div>
-              <label className="block font-semibold text-[#202d2d] mb-1">Verified Deadline</label>
+              <label className="block font-semibold text-[#202d2d] mb-1">Official Deadline</label>
               <input
                 type="date"
-                required
                 value={deadline}
                 onChange={(e) => setDeadline(e.target.value)}
-                className="w-full p-2 border border-[#cbd5d1] rounded-md outline-none font-bold text-[#ae4343]"
+                className="w-full p-2 border border-[#cbd5d1] rounded-md bg-white outline-none focus:border-[#246b54]"
+                required
               />
             </div>
             <div>
-              <label className="block font-semibold text-[#202d2d] mb-1">Case Manager</label>
+              <label className="block font-semibold text-[#202d2d] mb-1">Assigned Staff</label>
               <select
                 value={owner}
                 onChange={(e) => setOwner(e.target.value)}
-                className="w-full p-2 border border-[#cbd5d1] rounded-md bg-white outline-none"
+                className="w-full p-2 border border-[#cbd5d1] rounded-md bg-white outline-none focus:border-[#246b54]"
               >
                 {STAFF_MEMBERS.map((s) => (
-                  <option key={s} value={s}>
-                    {s}
-                  </option>
+                  <option key={s} value={s}>{s}</option>
                 ))}
               </select>
             </div>
           </div>
 
           <div>
-            <label className="block font-semibold text-[#202d2d] mb-1">Documents Required (One per line)</label>
+            <label className="block font-semibold text-[#202d2d] mb-1">Required Documents Checklist (one per line)</label>
             <textarea
-              rows={2}
-              placeholder="e.g. Updated Police Certificate&#10;Original Paystubs&#10;Employment Letter"
+              rows={3}
               value={requiredDocs}
               onChange={(e) => setRequiredDocs(e.target.value)}
-              className="w-full p-2 border border-[#cbd5d1] rounded-md outline-none font-mono text-[12px]"
+              placeholder="e.g.&#10;Updated T4 slips for 2024 and 2025&#10;Letter of explanation regarding employment gap&#10;Pay stubs (last 6 months)"
+              className="w-full p-2 border border-[#cbd5d1] rounded-md bg-white outline-none focus:border-[#246b54] font-mono text-[12.5px]"
             />
           </div>
 
           <div>
-            <label className="block font-semibold text-[#202d2d] mb-1">Comments / Strategy Instructions</label>
-            <textarea
-              rows={2}
+            <label className="block font-semibold text-[#202d2d] mb-1">Notes & Instructions</label>
+            <input
+              type="text"
               value={comments}
               onChange={(e) => setComments(e.target.value)}
-              className="w-full p-2 border border-[#cbd5d1] rounded-md outline-none"
+              placeholder="Internal strategy or officer reference notes..."
+              className="w-full p-2 border border-[#cbd5d1] rounded-md bg-white outline-none focus:border-[#246b54]"
             />
           </div>
 
-          <label className="flex items-center gap-2 text-[12.5px] font-semibold text-[#202d2d] cursor-pointer">
-            <input
-              type="checkbox"
-              required
-              checked={verifiedCheck}
-              onChange={(e) => setVerifiedCheck(e.target.checked)}
-            />
-            <span>Deadline verified against source correspondence (time zone & calendar days confirmed)</span>
-          </label>
+          <div className="p-3 bg-[#fff8eb] border border-[#f5dfa8] rounded-md">
+            <label className="flex items-start gap-2 text-[12.5px] text-[#7d4e10] cursor-pointer">
+              <input
+                type="checkbox"
+                checked={verifiedCheck}
+                onChange={(e) => setVerifiedCheck(e.target.checked)}
+                className="mt-0.5 rounded text-[#a7653b] focus:ring-[#a7653b]"
+                required
+              />
+              <span>
+                <strong>Verified by RCIC / Case Manager:</strong> I have checked the deadline date directly on the IRCC or ESDC official letter.
+              </span>
+            </label>
+          </div>
 
+          {/* Footer Buttons */}
           <div className="pt-3 border-t border-[#edf0ee] flex items-center justify-end gap-2.5">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 border border-[#cbd5d1] text-[#202d2d] hover:bg-[#f4f6f5] rounded-md font-semibold text-[13px]"
+              className="px-4 py-2 border border-[#cbd5d1] rounded-md text-[#52625a] hover:bg-[#f4f6f5] font-medium transition-colors"
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="px-5 py-2 bg-[#246b54] hover:bg-[#1a503e] text-white rounded-md font-semibold text-[13px] shadow-xs"
+              className="px-5 py-2 bg-[#a7653b] hover:bg-[#8f532d] text-white rounded-md font-semibold transition-colors shadow-xs"
             >
-              Create Response Workflow
+              Save request
             </button>
           </div>
         </form>

@@ -1,22 +1,10 @@
-import React from 'react'
-import { Matter, Appointment, PFLRecord, OfficeTask } from '@/types/crm'
-import { 
-  formatDueDate, 
-  isOverdue, 
-  isStalled, 
-  hasHardDeadlineSoon, 
-  getBusinessDaysOverdue,
-  getHealthStatus
-} from '@/lib/crmUtils'
-import { 
-  AlertTriangle, 
-  Calendar, 
-  CheckSquare, 
-  Clock, 
-  FileText, 
-  ArrowRight,
-  Plus
-} from 'lucide-react'
+import React, { useState } from 'react'
+import { Matter, Appointment, PFLRecord, OfficeTask, ClientUpdate, NewsArticle, PersonalReminder } from '@/types/crm'
+import { INITIAL_CLIENT_UPDATES, INITIAL_NEWS_ARTICLES, INITIAL_PERSONAL_REMINDERS } from '@/data/mockData'
+import { toast } from '@/components/ui/sonner'
+import { ClientUpdateModal } from './ClientUpdateModal'
+import { PflModal } from './PflModal'
+import { PersonalReminderModal } from './PersonalReminderModal'
 
 interface DashboardViewProps {
   matters: Matter[]
@@ -28,443 +16,901 @@ interface DashboardViewProps {
   onNavigate: (view: any, filter?: string) => void
   onNewMatter: () => void
   onNewPfl: () => void
+  onAssignTask?: () => void
 }
+
+type DashboardTab = 
+  | 'File Submission Deadlines' 
+  | 'LMIA Deadlines' 
+  | 'Updates' 
+  | 'PFL / Request Letters' 
+  | 'News' 
+  | 'Personal Reminders'
 
 export function DashboardView({
   matters,
-  appointments,
-  officeTasks,
-  pflRecords,
-  staffList,
   onOpenMatter,
-  onNavigate,
-  onNewMatter,
-  onNewPfl
+  onNavigate
 }: DashboardViewProps) {
-  const hardSoonCount = matters.filter((m) => hasHardDeadlineSoon(m)).length
-  const overdueCount = matters.filter((m) => isOverdue(m)).length
-  const reviewCount = matters.filter((m) => m.stage === 3).length
-  const clientWaitingCount = matters.filter((m) => m.ball === 'Client' && m.stage < 6).length
-  const staffWorkingCount = matters.filter((m) => m.ball === 'Case Manager' && m.stage < 5).length
-  const readyCount = matters.filter((m) => m.stage === 4 && m.ready).length
-  const stalledCount = matters.filter((m) => isStalled(m)).length
-  const openTasksDueToday = officeTasks.filter((t) => t.status !== 'Completed' && t.due <= '2026-10-07').length
+  const [activeTab, setActiveTab] = useState<DashboardTab>('File Submission Deadlines')
+  
+  // Dashboard Specific States
+  const [clientUpdates, setClientUpdates] = useState<ClientUpdate[]>(INITIAL_CLIENT_UPDATES)
+  const [newsArticles] = useState<NewsArticle[]>(INITIAL_NEWS_ARTICLES)
+  const [personalReminders, setPersonalReminders] = useState<PersonalReminder[]>(INITIAL_PERSONAL_REMINDERS)
+  
+  // Subfilters
+  const [updatesFilter, setUpdatesFilter] = useState<'Updates' | 'UpdateSent'>('Updates')
+  const [pflTab, setPflTab] = useState<'Open' | 'Completed'>('Open')
+  const [remindersUrgency, setRemindersUrgency] = useState<string>('All')
+  const [reminderManagerFilter, setReminderManagerFilter] = useState<string>('All')
 
-  const priorityMatters = matters.filter(
-    (m) => isOverdue(m) || hasHardDeadlineSoon(m) || isStalled(m) || m.stage === 3
-  )
+  // Modals
+  const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false)
+  const [isPflModalOpen, setIsPflModalOpen] = useState(false)
+  const [isReminderModalOpen, setIsReminderModalOpen] = useState(false)
+  const [selectedArticle, setSelectedArticle] = useState<NewsArticle | null>(null)
 
-  const todayAppointments = appointments.filter((a) => a.date === '2026-10-07')
+  // Handlers
+  const handleSaveUpdate = (update: ClientUpdate) => {
+    setClientUpdates([update, ...clientUpdates])
+  }
+
+  const handleSaveReminder = (reminder: PersonalReminder) => {
+    setPersonalReminders([reminder, ...personalReminders])
+  }
+
+  const handleToggleReminder = (id: string) => {
+    setPersonalReminders(
+      personalReminders.map((r) => {
+        if (r.id === id) {
+          const nextState = !r.completed
+          toast.success(nextState ? 'Reminder marked completed' : 'Reminder restored to active')
+          return { ...r, completed: nextState }
+        }
+        return r
+      })
+    )
+  }
 
   return (
     <div className="space-y-6">
-      {/* Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2">
-        <div>
-          <div className="text-[12px] font-bold tracking-[1.5px] uppercase text-[#a7653b]">
-            Owner Workspace · 7 October 2026
-          </div>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-[#202d2d] mt-1">
-            What needs attention today?
-          </h1>
-          <p className="text-[14px] text-[#677472] mt-0.5">
-            Focus on files that need a decision, hard deadlines, and staff actions today.
-          </p>
-        </div>
-        <div className="flex items-center gap-2.5">
-          <button
-            onClick={() => onNavigate('Deadline Centre')}
-            className="px-3.5 py-2 bg-white hover:bg-[#edf2ef] border border-[#dfe5e3] rounded-md text-[13px] font-semibold text-[#202d2d] transition-colors shadow-2xs"
-          >
-            Deadline Centre
-          </button>
-          <button
-            onClick={onNewMatter}
-            className="flex items-center gap-1.5 px-4 py-2 bg-[#a7653b] hover:bg-[#8f532d] text-white rounded-md text-[13.5px] font-semibold transition-colors shadow-xs"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Open matter</span>
-          </button>
-        </div>
+      {/* Page Title matching SCR-001/002/003 */}
+      <div>
+        <h1 className="text-[32px] font-bold tracking-tight text-[#1c2826] leading-none">
+          Dashboard
+        </h1>
       </div>
 
-      {/* Metric Tiles Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 2xl:grid-cols-4 gap-3.5">
+      {/* The 6 Main Tabs matching SCR-001 */}
+      <div className="flex items-center gap-1 border-b border-[#e5e7eb] pb-0 overflow-x-auto scrollbar-none select-none">
         <button
-          onClick={() => onNavigate('Deadline Centre')}
-          className="stat-card border-l-4 border-l-[#ae4343] cursor-pointer hover:bg-white"
+          onClick={() => setActiveTab('File Submission Deadlines')}
+          className={`px-4 py-2.5 text-[13.5px] font-medium transition-all whitespace-nowrap cursor-pointer flex items-center gap-2 ${
+            activeTab === 'File Submission Deadlines'
+              ? 'bg-[#dcf0e7] text-[#0d4734] border-b-2 border-b-[#126b48] font-semibold'
+              : 'text-[#4b5563] hover:text-[#1c2826]'
+          }`}
         >
-          <span className="label flex items-center justify-between">
-            <span>Critical deadlines</span>
-            <AlertTriangle className="w-4 h-4 text-[#ae4343]" />
-          </span>
-          <span className="num text-[#ae4343]">{hardSoonCount}</span>
-          <span className="foot">
-            {hardSoonCount > 0 ? (
-              <span className="badge red">Next 7 days</span>
-            ) : (
-              <span className="text-[#677472]">No hard deadlines</span>
-            )}
+          <span>File Submission Deadlines</span>
+          <span className="w-5 h-5 rounded-full bg-[#b91c1c] text-white text-[11px] font-bold flex items-center justify-center shrink-0">
+            3
           </span>
         </button>
 
         <button
-          onClick={() => onNavigate('To-Do List', 'Overdue')}
-          className="stat-card border-l-4 border-l-[#ae4343] cursor-pointer hover:bg-white"
+          onClick={() => setActiveTab('LMIA Deadlines')}
+          className={`px-4 py-2.5 text-[13.5px] font-medium transition-all whitespace-nowrap cursor-pointer flex items-center gap-2 ${
+            activeTab === 'LMIA Deadlines'
+              ? 'bg-[#dcf0e7] text-[#0d4734] border-b-2 border-b-[#126b48] font-semibold'
+              : 'text-[#4b5563] hover:text-[#1c2826]'
+          }`}
         >
-          <span className="label flex items-center justify-between">
-            <span>Overdue staff work</span>
-            <Clock className="w-4 h-4 text-[#ae4343]" />
-          </span>
-          <span className="num text-[#ae4343]">{overdueCount}</span>
-          <span className="foot">
-            <span className="badge red">{overdueCount} needs action</span>
+          <span>LMIA Deadlines</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('Updates')}
+          className={`px-4 py-2.5 text-[13.5px] font-medium transition-all whitespace-nowrap cursor-pointer flex items-center gap-2 ${
+            activeTab === 'Updates'
+              ? 'bg-[#dcf0e7] text-[#0d4734] border-b-2 border-b-[#126b48] font-semibold'
+              : 'text-[#4b5563] hover:text-[#1c2826]'
+          }`}
+        >
+          <span>Updates</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('PFL / Request Letters')}
+          className={`px-4 py-2.5 text-[13.5px] font-medium transition-all whitespace-nowrap cursor-pointer flex items-center gap-2 ${
+            activeTab === 'PFL / Request Letters'
+              ? 'bg-[#dcf0e7] text-[#0d4734] border-b-2 border-b-[#126b48] font-semibold'
+              : 'text-[#4b5563] hover:text-[#1c2826]'
+          }`}
+        >
+          <span>PFL / Request Letters</span>
+          <span className="w-5 h-5 rounded-full bg-[#b91c1c] text-white text-[11px] font-bold flex items-center justify-center shrink-0">
+            1
           </span>
         </button>
 
         <button
-          onClick={() => onNavigate('To-Do List', 'RCIC')}
-          className="stat-card border-l-4 border-l-[#7359a6] cursor-pointer hover:bg-white"
+          onClick={() => setActiveTab('News')}
+          className={`px-4 py-2.5 text-[13.5px] font-medium transition-all whitespace-nowrap cursor-pointer flex items-center gap-2 ${
+            activeTab === 'News'
+              ? 'bg-[#dcf0e7] text-[#0d4734] border-b-2 border-b-[#126b48] font-semibold'
+              : 'text-[#4b5563] hover:text-[#1c2826]'
+          }`}
         >
-          <span className="label flex items-center justify-between">
-            <span>Waiting for my review</span>
-            <FileText className="w-4 h-4 text-[#7359a6]" />
-          </span>
-          <span className="num text-[#7359a6]">{reviewCount}</span>
-          <span className="foot">
-            <span className="badge purple">RCIC review queue</span>
-          </span>
+          <span>News</span>
         </button>
 
         <button
-          onClick={() => onNavigate('Task Manager')}
-          className="stat-card border-l-4 border-l-[#246b54] cursor-pointer hover:bg-white"
+          onClick={() => setActiveTab('Personal Reminders')}
+          className={`px-4 py-2.5 text-[13.5px] font-medium transition-all whitespace-nowrap cursor-pointer flex items-center gap-2 ${
+            activeTab === 'Personal Reminders'
+              ? 'bg-[#dcf0e7] text-[#0d4734] border-b-2 border-b-[#126b48] font-semibold'
+              : 'text-[#4b5563] hover:text-[#1c2826]'
+          }`}
         >
-          <span className="label flex items-center justify-between">
-            <span>Tasks due today / overdue</span>
-            <CheckSquare className="w-4 h-4 text-[#246b54]" />
-          </span>
-          <span className="num text-[#246b54]">{openTasksDueToday}</span>
-          <span className="foot">
-            <span className="badge green">Office action items</span>
+          <span>Personal Reminders</span>
+          <span className="w-5 h-5 rounded-full bg-[#b91c1c] text-white text-[11px] font-bold flex items-center justify-center shrink-0">
+            1
           </span>
         </button>
       </div>
 
-      {/* Secondary status tiles */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-[13px]">
-        <button
-          onClick={() => onNavigate('To-Do List', 'Client')}
-          className="p-3 bg-white border border-[#dfe5e3] rounded-lg text-left hover:border-[#a7653b] transition-all"
-        >
-          <div className="text-[#677472] text-[11px] font-semibold uppercase tracking-wider">With Client</div>
-          <div className="text-xl font-bold text-[#976314] mt-0.5">{clientWaitingCount}</div>
-          <div className="text-[11px] text-[#677472]">Awaiting documents</div>
-        </button>
-        <button
-          onClick={() => onNavigate('To-Do List', 'Case Manager')}
-          className="p-3 bg-white border border-[#dfe5e3] rounded-lg text-left hover:border-[#a7653b] transition-all"
-        >
-          <div className="text-[#677472] text-[11px] font-semibold uppercase tracking-wider">Staff Working</div>
-          <div className="text-xl font-bold text-[#356c8d] mt-0.5">{staffWorkingCount}</div>
-          <div className="text-[11px] text-[#677472]">Under preparation</div>
-        </button>
-        <button
-          onClick={() => onNavigate('To-Do List', 'Ready')}
-          className="p-3 bg-white border border-[#dfe5e3] rounded-lg text-left hover:border-[#a7653b] transition-all"
-        >
-          <div className="text-[#677472] text-[11px] font-semibold uppercase tracking-wider">Ready to Submit</div>
-          <div className="text-xl font-bold text-[#246b54] mt-0.5">{readyCount}</div>
-          <div className="text-[11px] text-[#677472]">Final checks verified</div>
-        </button>
-        <button
-          onClick={() => onNavigate('To-Do List', 'Stalled')}
-          className="p-3 bg-white border border-[#dfe5e3] rounded-lg text-left hover:border-[#a7653b] transition-all"
-        >
-          <div className="text-[#677472] text-[11px] font-semibold uppercase tracking-wider">Stalled Files</div>
-          <div className="text-xl font-bold text-[#ae4343] mt-0.5">{stalledCount}</div>
-          <div className="text-[11px] text-[#677472]">5+ days without activity</div>
-        </button>
-      </div>
-
-      {/* Priority Work Table */}
-      <div className="bg-white border border-[#dfe5e3] rounded-xl overflow-hidden shadow-xs">
-        <div className="p-4 border-b border-[#edf0ee] flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
-          <div className="flex items-center gap-2.5">
-            <h2 className="text-[17px] font-bold text-[#202d2d]">Priority Work Needing Decisions</h2>
-            <span className="badge amber">Immediate Attention</span>
-          </div>
-          <button
-            onClick={() => onNavigate('To-Do List')}
-            className="text-[13px] font-semibold text-[#a7653b] hover:text-[#804822] flex items-center gap-1"
-          >
-            <span>View all retained files</span>
-            <ArrowRight className="w-3.5 h-3.5" />
-          </button>
-        </div>
-
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-[13.5px] border-collapse min-w-[760px]">
-            <thead>
-              <tr className="bg-[#f9faf9] border-b border-[#edf0ee] text-[11px] font-semibold text-[#677472] uppercase tracking-wider">
-                <th className="py-3 px-4">Client / Matter</th>
-                <th className="py-3 px-3">Stage</th>
-                <th className="py-3 px-3">Action Holder</th>
-                <th className="py-3 px-4">Next Action</th>
-                <th className="py-3 px-3">Due / Delay</th>
-                <th className="py-3 px-3">Owner</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[#edf0ee]">
-              {priorityMatters.map((m) => {
-                const overdue = isOverdue(m)
-                const delay = getBusinessDaysOverdue(m.due)
-                const health = getHealthStatus(m)
-                return (
-                  <tr key={m.id} className="hover:bg-[#f8faf9] transition-colors">
-                    <td className="py-3 px-4">
-                      <div className="flex items-center gap-2">
-                        <span className={`w-2 h-2 rounded-full shrink-0 ${
-                          health.colorClass === 'red' ? 'bg-red-500' : health.colorClass === 'amber' ? 'bg-amber-500' : 'bg-emerald-500'
-                        }`} />
-                        <button
-                          onClick={() => onOpenMatter(m.id)}
-                          className="font-bold text-[#12382e] hover:text-[#a7653b] hover:underline text-left block"
-                        >
-                          {m.name}
-                        </button>
-                      </div>
-                      <div className="text-[11.5px] text-[#677472] ml-4">
-                        {m.id} · {m.type}
-                      </div>
-                    </td>
-                    <td className="py-3 px-3">
-                      <span className={`badge ${m.stage === 3 ? 'purple' : ''}`}>
-                        Stage {m.stage}
-                      </span>
-                    </td>
-                    <td className="py-3 px-3">
-                      <span
-                        className={`badge ${
-                          m.ball === 'Client'
-                            ? 'amber'
-                            : m.ball === 'RCIC'
-                            ? 'purple'
-                            : m.ball === 'Government'
-                            ? 'blue'
-                            : ''
-                        }`}
-                      >
-                        {m.ball}
-                      </span>
-                    </td>
-                    <td className="py-3 px-4 max-w-xs text-[#202d2d] truncate font-medium">
-                      {m.next}
-                      {m.hard && (
-                        <div className="text-[11px] text-[#ae4343] font-semibold mt-0.5">
-                          Hard deadline: {formatDueDate(m.hard)}
-                        </div>
-                      )}
-                    </td>
-                    <td className="py-3 px-3 whitespace-nowrap">
-                      {overdue ? (
-                        <span className="badge red">
-                          {formatDueDate(m.due)} ({delay}d overdue)
-                        </span>
-                      ) : (
-                        <span className="text-[#677472]">{formatDueDate(m.due)}</span>
-                      )}
-                    </td>
-                    <td className="py-3 px-3 text-[#202d2d] font-medium">{m.owner}</td>
-                  </tr>
-                )
-              })}
-              {priorityMatters.length === 0 && (
-                <tr>
-                  <td colSpan={6} className="py-8 text-center text-[#677472]">
-                    No urgent matters requiring decisions right now.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* Grid: Staff Workload & Today's Appointments */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Staff Workload */}
-        <div className="bg-white border border-[#dfe5e3] rounded-xl p-5 shadow-xs">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-[16.5px] font-bold text-[#202d2d]">Staff Workload & Open Tasks</h2>
-            <button
-              onClick={() => onNavigate('Task Manager')}
-              className="text-[12.5px] text-[#a7653b] hover:underline font-semibold"
-            >
-              Task Manager
-            </button>
-          </div>
-          <table className="w-full text-left text-[13px]">
-            <thead>
-              <tr className="border-b border-[#edf0ee] text-[11px] font-semibold text-[#677472] uppercase">
-                <th className="pb-2.5">Case Manager</th>
-                <th className="pb-2.5 text-center">Open Tasks</th>
-                <th className="pb-2.5 text-center">Active Matters</th>
-                <th className="pb-2.5 text-center">Overdue</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[#edf0ee]">
-              {staffList.map((staffName) => {
-                const assignedMatters = matters.filter((m) => m.owner === staffName && m.stage < 6)
-                const openTasksCount = assignedMatters.reduce(
-                  (acc, m) => acc + m.tasks.filter((t) => !t.done).length,
-                  0
-                )
-                const overdueMatters = assignedMatters.filter((m) => isOverdue(m)).length
-
-                return (
-                  <tr key={staffName} className="hover:bg-[#f8faf9]">
-                    <td className="py-2.5 flex items-center gap-2.5 font-semibold text-[#12382e]">
-                      <div className="w-6 h-6 rounded-full bg-[#e9dace] text-[#815535] text-[10px] font-bold flex items-center justify-center">
-                        {staffName.slice(0, 2).toUpperCase()}
-                      </div>
-                      <span>{staffName}</span>
-                    </td>
-                    <td className="py-2.5 text-center font-mono font-semibold">{openTasksCount}</td>
-                    <td className="py-2.5 text-center font-mono">{assignedMatters.length}</td>
-                    <td className="py-2.5 text-center">
-                      {overdueMatters > 0 ? (
-                        <span className="badge red">{overdueMatters}</span>
-                      ) : (
-                        <span className="text-[#8ba79b]">—</span>
-                      )}
-                    </td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
-        </div>
-
-        {/* Today's Appointments */}
-        <div className="bg-white border border-[#dfe5e3] rounded-xl p-5 shadow-xs">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2">
-              <Calendar className="w-4 h-4 text-[#246b54]" />
-              <h2 className="text-[16.5px] font-bold text-[#202d2d]">Today’s Consultations & Visits</h2>
-            </div>
-            <button
-              onClick={() => onNavigate('Appointments')}
-              className="text-[12.5px] text-[#a7653b] hover:underline font-semibold"
-            >
-              Weekly sheet
-            </button>
-          </div>
-
-          <div className="space-y-2.5">
-            {todayAppointments.map((a) => (
-              <div
-                key={a.id}
-                className="flex items-center justify-between p-2.5 bg-[#f8faf9] border border-[#edf0ee] rounded-lg text-[13px]"
-              >
-                <div>
-                  <div className="font-bold text-[#12382e]">
-                    {a.time} · {a.client}
-                  </div>
-                  <div className="text-[11.5px] text-[#677472] truncate max-w-xs">{a.notes}</div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="badge blue">{a.service}</span>
-                  <span
-                    className={`badge ${
-                      a.status === 'Completed' || a.status === 'Confirmed'
-                        ? 'green'
-                        : a.status === 'Waiting'
-                        ? 'amber'
-                        : ''
-                    }`}
-                  >
-                    {a.status}
-                  </span>
-                </div>
-              </div>
-            ))}
-            {todayAppointments.length === 0 && (
-              <p className="text-center text-[#677472] py-6 text-[13px]">
-                No appointments booked for today.
-              </p>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* PFL & Government Request Letters Section */}
-      <div className="bg-white border border-[#dfe5e3] rounded-xl p-5 shadow-xs">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+      {/* ========================================================= */}
+      {/* TAB 1: FILE SUBMISSION DEADLINES (Exact SCR-001)           */}
+      {/* ========================================================= */}
+      {activeTab === 'File Submission Deadlines' && (
+        <div className="space-y-5">
           <div>
-            <h2 className="text-[17px] font-bold text-[#202d2d]">
-              PFL & Government Request Letters
+            <h2 className="text-[20px] font-bold text-[#1c2826]">File submission deadlines</h2>
+            <p className="text-[13px] text-[#6b7280] mt-1">
+              Overdue submissions and upcoming submissions for the next 10 calendar days. Each file appears once. Alerts use Vancouver calendar dates, including weekends.
+            </p>
+            <div className="mt-2 text-[13px] text-[#1c2826] font-medium">
+              <button
+                onClick={() => onNavigate('To-Do List')}
+                className="hover:underline cursor-pointer"
+              >
+                Open To-Do List · View all deadlines, including overdue
+              </button>
+            </div>
+          </div>
+
+          {/* Card 1: Overdue (1) */}
+          <div className="bg-white rounded-xl border border-[#e5e7eb] border-l-4 border-l-[#b91c1c] p-6 shadow-2xs">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-base font-bold text-[#1c2826]">
+                Overdue <span className="text-[#6b7280] font-normal">(1)</span>
+              </h3>
+              <span className="text-xs text-[#6b7280]">Unsubmitted files stay visible beyond 10 days</span>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-[13px]">
+                <thead className="bg-[#fafbfb] text-[#6b7280] text-[11px] uppercase tracking-wider font-semibold">
+                  <tr>
+                    <th className="py-2.5 px-4">SUBMISSION DEADLINE</th>
+                    <th className="py-2.5 px-4">DAYS OVERDUE</th>
+                    <th className="py-2.5 px-4">CLIENT / APPLICATION</th>
+                    <th className="py-2.5 px-4">CASE MANAGER</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#f3f4f6]">
+                  <tr className="hover:bg-[#fbfcfb]">
+                    <td className="py-3.5 px-4 font-normal text-[#1c2826]">2026-10-16</td>
+                    <td className="py-3.5 px-4">
+                      <span className="bg-[#fce8e8] text-[#c53030] rounded px-2.5 py-0.5 text-xs font-semibold">
+                        6 days overdue
+                      </span>
+                    </td>
+                    <td className="py-3.5 px-4">
+                      <div className="font-bold text-[#1c2826]">Grace Mensah</div>
+                      <div className="text-xs text-[#6b7280]">Work Permit</div>
+                    </td>
+                    <td className="py-3.5 px-4 text-[#1c2826]">Amanpreet</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Card 2: Within 3 Days (2) matching SCR-001 pink background */}
+          <div className="bg-[#fff5f5] rounded-xl border border-[#dc2626]/20 border-l-4 border-l-[#dc2626] p-6 shadow-2xs">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-base font-bold text-[#dc2626] flex items-center gap-2">
+                <span className="w-5 h-5 rounded-full bg-[#dc2626] text-white text-xs font-bold flex items-center justify-center shrink-0">
+                  !
+                </span>
+                <span>Within 3 Days</span>
+                <span className="text-[#dc2626] font-normal">(2)</span>
+              </h3>
+              <span className="text-xs text-[#6b7280]">Today–3 days</span>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-[13px]">
+                <thead className="bg-[#fff0f0] text-[#6b7280] text-[11px] uppercase tracking-wider font-semibold">
+                  <tr>
+                    <th className="py-2.5 px-4">DUE DATE</th>
+                    <th className="py-2.5 px-4">CLIENT / APPLICATION</th>
+                    <th className="py-2.5 px-4">ACTION REQUIRED</th>
+                    <th className="py-2.5 px-4">CASE MANAGER</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#fee2e2]">
+                  <tr className="hover:bg-[#ffeded]">
+                    <td className="py-3.5 px-4">
+                      <span className="bg-[#dc2626] text-white rounded px-2.5 py-0.5 text-xs font-bold">
+                        Oct 22
+                      </span>
+                      <div className="text-[#dc2626] text-xs font-bold mt-1">
+                        Due today · File submission
+                      </div>
+                    </td>
+                    <td className="py-3.5 px-4">
+                      <div className="font-bold text-[#1c2826]">Omar Siddiqui</div>
+                      <div className="text-xs text-[#6b7280]">Express Entry PR Application</div>
+                    </td>
+                    <td className="py-3.5 px-4 text-[#1c2826]">Submit Express Entry PR Application</td>
+                    <td className="py-3.5 px-4 text-[#1c2826]">Amanpreet</td>
+                  </tr>
+                  <tr className="hover:bg-[#ffeded]">
+                    <td className="py-3.5 px-4">
+                      <span className="bg-[#dc2626] text-white rounded px-2.5 py-0.5 text-xs font-bold">
+                        Oct 23
+                      </span>
+                      <div className="text-[#dc2626] text-xs font-bold mt-1">
+                        Due tomorrow · File submission
+                      </div>
+                    </td>
+                    <td className="py-3.5 px-4">
+                      <div className="font-bold text-[#1c2826]">Kenji Watanabe</div>
+                      <div className="text-xs text-[#6b7280]">Work Permit</div>
+                    </td>
+                    <td className="py-3.5 px-4 text-[#1c2826]">Submit Work Permit</td>
+                    <td className="py-3.5 px-4 text-[#1c2826]">Sukhman</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Card 3: Within 5 Days (Week) (1) */}
+          <div className="bg-white rounded-xl border border-[#e5e7eb] border-l-4 border-l-[#d97706] p-6 shadow-2xs">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-base font-bold text-[#1c2826]">
+                Within 5 Days (Week) <span className="text-[#6b7280] font-normal">(1)</span>
+              </h3>
+              <span className="text-xs text-[#6b7280]">4–5 days</span>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-[13px]">
+                <thead className="bg-[#fafbfb] text-[#6b7280] text-[11px] uppercase tracking-wider font-semibold">
+                  <tr>
+                    <th className="py-2.5 px-4">DUE DATE</th>
+                    <th className="py-2.5 px-4">CLIENT / APPLICATION</th>
+                    <th className="py-2.5 px-4">ACTION REQUIRED</th>
+                    <th className="py-2.5 px-4">CASE MANAGER</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#f3f4f6]">
+                  <tr className="hover:bg-[#fbfcfb]">
+                    <td className="py-3.5 px-4">
+                      <span className="bg-[#d97706] text-white rounded px-2.5 py-0.5 text-xs font-bold">
+                        Oct 27
+                      </span>
+                      <div className="text-[#d97706] text-xs font-semibold mt-1">
+                        Due in 5 days · File submission
+                      </div>
+                    </td>
+                    <td className="py-3.5 px-4">
+                      <div className="font-bold text-[#1c2826]">Amandeep Singh</div>
+                      <div className="text-xs text-[#6b7280]">Spousal Sponsorship</div>
+                    </td>
+                    <td className="py-3.5 px-4 text-[#1c2826]">Submit Spousal Sponsorship PR Application</td>
+                    <td className="py-3.5 px-4 text-[#1c2826]">Inderpreet</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================= */}
+      {/* TAB 2: LMIA DEADLINES (Exact SCR-002)                      */}
+      {/* ========================================================= */}
+      {activeTab === 'LMIA Deadlines' && (
+        <div className="space-y-5">
+          <div>
+            <h2 className="text-[20px] font-bold text-[#1c2826]">
+              LMIA advertisement & submission reminders
             </h2>
-            <p className="text-[12.5px] text-[#677472]">
-              Track critical procedural fairness letters and time-limited document requests.
+            <p className="text-[13px] text-[#6b7280] mt-1 max-w-4xl">
+              Ad expiry prompts preparation; it does not automatically mark an LMIA ready. Advertisement expiry, submission and on-hold review reminders use separate 3-, 5- and 10-day groups. Click a company to open its profile.
             </p>
           </div>
-          <button
-            onClick={onNewPfl}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-[#246b54] hover:bg-[#1a503e] text-white rounded-md text-[12.5px] font-semibold transition-colors"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            <span>+ Add PFL / Request</span>
-          </button>
-        </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-[13px] min-w-[760px]">
-            <thead>
-              <tr className="bg-[#fff1d6] text-[#76501d] text-[11px] font-bold uppercase tracking-wider">
-                <th className="py-2.5 px-3">File / Client</th>
-                <th className="py-2.5 px-3">Category</th>
-                <th className="py-2.5 px-4">Action Required</th>
-                <th className="py-2.5 px-3">Deadline</th>
-                <th className="py-2.5 px-3">Case Manager</th>
-                <th className="py-2.5 px-3 text-right">Status</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[#edf0ee]">
-              {pflRecords.map((pfl) => (
-                <tr key={pfl.id} className="hover:bg-[#fafbf9]">
-                  <td className="py-2.5 px-3 font-semibold text-[#12382e]">
-                    <div>{pfl.clientName}</div>
-                    <div className="text-[11px] text-[#677472]">{pfl.fileNumber} · {pfl.applicationType}</div>
-                  </td>
-                  <td className="py-2.5 px-3">
-                    <span className="badge amber">{pfl.category}</span>
-                  </td>
-                  <td className="py-2.5 px-4 max-w-sm text-[#202d2d] truncate">
-                    {pfl.actionRequired}
-                  </td>
-                  <td className="py-2.5 px-3 whitespace-nowrap">
-                    <span className="badge red font-bold">
-                      {formatDueDate(pfl.deadline)}
-                    </span>
-                  </td>
-                  <td className="py-2.5 px-3 font-medium">{pfl.owner}</td>
-                  <td className="py-2.5 px-3 text-right">
-                    <span className="badge green">{pfl.status}</span>
-                  </td>
-                </tr>
-              ))}
-              {pflRecords.length === 0 && (
-                <tr>
-                  <td colSpan={6} className="text-center py-4 text-[#677472]">
-                    No active procedural fairness letters.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+          {/* Card 1: Overdue (0) */}
+          <div className="bg-[#fff5f5] rounded-xl border border-[#dc2626]/20 border-l-4 border-l-[#dc2626] p-6 shadow-2xs">
+            <div className="flex items-center gap-2 mb-4">
+              <span className="w-5 h-5 rounded-full bg-[#dc2626] text-white text-xs font-bold flex items-center justify-center shrink-0">
+                !
+              </span>
+              <h3 className="text-base font-bold text-[#dc2626]">Overdue <span className="font-normal">(0)</span></h3>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-[13px]">
+                <thead className="bg-[#fff0f0] text-[#6b7280] text-[11px] uppercase tracking-wider font-semibold">
+                  <tr>
+                    <th className="py-2.5 px-4">COMPANY NAME</th>
+                    <th className="py-2.5 px-4">POSITION</th>
+                    <th className="py-2.5 px-4">REMINDER</th>
+                    <th className="py-2.5 px-4">DEADLINE</th>
+                    <th className="py-2.5 px-4">CASE MANAGER</th>
+                    <th className="py-2.5 px-4">STATUS / REMINDER</th>
+                  </tr>
+                </thead>
+              </table>
+              <div className="py-10 text-center text-sm text-[#6b7280]">
+                No reminders in this section.
+              </div>
+            </div>
+          </div>
+
+          {/* Card 2: Within 3 Days (0) */}
+          <div className="bg-[#fff5f5] rounded-xl border border-[#dc2626]/20 border-l-4 border-l-[#dc2626] p-6 shadow-2xs">
+            <div className="flex items-center gap-2 mb-4">
+              <span className="w-5 h-5 rounded-full bg-[#dc2626] text-white text-xs font-bold flex items-center justify-center shrink-0">
+                !
+              </span>
+              <h3 className="text-base font-bold text-[#dc2626]">Within 3 Days <span className="font-normal">(0)</span></h3>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-[13px]">
+                <thead className="bg-[#fff0f0] text-[#6b7280] text-[11px] uppercase tracking-wider font-semibold">
+                  <tr>
+                    <th className="py-2.5 px-4">COMPANY NAME</th>
+                    <th className="py-2.5 px-4">POSITION</th>
+                    <th className="py-2.5 px-4">REMINDER</th>
+                    <th className="py-2.5 px-4">DEADLINE</th>
+                    <th className="py-2.5 px-4">CASE MANAGER</th>
+                    <th className="py-2.5 px-4">STATUS / REMINDER</th>
+                  </tr>
+                </thead>
+              </table>
+              <div className="py-10 text-center text-sm text-[#6b7280]">
+                No reminders in this section.
+              </div>
+            </div>
+          </div>
+
+          {/* Card 3: Within 5 Days (Week) (0) */}
+          <div className="bg-white rounded-xl border border-[#e5e7eb] border-l-4 border-l-[#d97706] p-6 shadow-2xs">
+            <div className="flex items-center gap-2 mb-4">
+              <h3 className="text-base font-bold text-[#1c2826]">Within 5 Days (Week) <span className="text-[#6b7280] font-normal">(0)</span></h3>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-[13px]">
+                <thead className="bg-[#fafbfb] text-[#6b7280] text-[11px] uppercase tracking-wider font-semibold">
+                  <tr>
+                    <th className="py-2.5 px-4">COMPANY NAME</th>
+                    <th className="py-2.5 px-4">POSITION</th>
+                    <th className="py-2.5 px-4">REMINDER</th>
+                    <th className="py-2.5 px-4">DEADLINE</th>
+                    <th className="py-2.5 px-4">CASE MANAGER</th>
+                    <th className="py-2.5 px-4">STATUS / REMINDER</th>
+                  </tr>
+                </thead>
+              </table>
+              <div className="py-10 text-center text-sm text-[#6b7280]">
+                No reminders in this section.
+              </div>
+            </div>
+          </div>
         </div>
-      </div>
+      )}
+
+      {/* ========================================================= */}
+      {/* TAB 3: UPDATES (Exact SCR-003)                             */}
+      {/* ========================================================= */}
+      {activeTab === 'Updates' && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-[22px] font-bold text-[#1c2826]">Client Updates</h2>
+            <button
+              onClick={() => setIsUpdateModalOpen(true)}
+              className="px-4 py-2 bg-[#a75928] hover:bg-[#924c1f] text-white rounded-md text-sm font-medium transition-colors shadow-2xs cursor-pointer"
+            >
+              + Create an Update
+            </button>
+          </div>
+
+          {/* Subfilter Pills */}
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setUpdatesFilter('Updates')}
+              className={`px-4 py-1.5 rounded-full text-xs font-medium cursor-pointer transition-colors ${
+                updatesFilter === 'Updates'
+                  ? 'bg-[#1f2d29] text-white'
+                  : 'bg-white border border-[#e5e7eb] text-[#374151]'
+              }`}
+            >
+              Updates ({clientUpdates.length})
+            </button>
+            <button
+              onClick={() => setUpdatesFilter('UpdateSent')}
+              className={`px-4 py-1.5 rounded-full text-xs font-medium cursor-pointer transition-colors ${
+                updatesFilter === 'UpdateSent'
+                  ? 'bg-[#1f2d29] text-white'
+                  : 'bg-white border border-[#e5e7eb] text-[#374151]'
+              }`}
+            >
+              Update Sent ({clientUpdates.filter((u) => u.status === 'Sent').length})
+            </button>
+          </div>
+
+          {/* Updates Table Card matching SCR-003 */}
+          <div className="bg-white rounded-xl border border-[#e5e7eb] shadow-2xs overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-[13px]">
+                <thead className="bg-[#fafbfb] border-b border-[#e5e7eb] text-[#6b7280] text-[11px] uppercase tracking-wider font-semibold">
+                  <tr>
+                    <th className="py-3 px-4">DATE</th>
+                    <th className="py-3 px-4">CLIENT NAME</th>
+                    <th className="py-3 px-4">TYPE OF APPLICATION</th>
+                    <th className="py-3 px-4">UPDATE</th>
+                    <th className="py-3 px-4">CHECKED BY</th>
+                    <th className="py-3 px-4">COMMENTS</th>
+                    <th className="py-3 px-4">ACTION</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#f3f4f6]">
+                  {clientUpdates.map((item) => (
+                    <tr key={item.id} className="hover:bg-[#fbfcfb]">
+                      <td className="py-3.5 px-4 text-[#1c2826]">{item.date}</td>
+                      <td className="py-3.5 px-4 font-bold text-[#1c2826]">{item.clientName}</td>
+                      <td className="py-3.5 px-4 text-[#1c2826]">{item.applicationType}</td>
+                      <td className="py-3.5 px-4 text-[#1c2826]">{item.updateType}</td>
+                      <td className="py-3.5 px-4 text-[#1c2826]">{item.checkedBy}</td>
+                      <td className="py-3.5 px-4 text-[#1c2826] max-w-xs whitespace-pre-line">{item.comments}</td>
+                      <td className="py-3.5 px-4">
+                        <div className="font-bold text-[#1c2826]">
+                          {item.status === 'Sent' ? 'Sent' : 'Not Sent'}
+                        </div>
+                        <button
+                          onClick={() => {
+                            setIsUpdateModalOpen(true)
+                          }}
+                          className="text-[12px] text-[#1c2826] hover:underline cursor-pointer block mt-0.5"
+                        >
+                          Open update
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================= */}
+      {/* TAB 4: PFL / REQUEST LETTERS (Exact SCR-005)               */}
+      {/* ========================================================= */}
+      {activeTab === 'PFL / Request Letters' && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-[22px] font-bold text-[#1c2826]">PFL / Request Letters</h2>
+            <button
+              onClick={() => setIsPflModalOpen(true)}
+              className="px-4 py-2 bg-[#a75928] hover:bg-[#924c1f] text-white rounded-md text-sm font-medium transition-colors shadow-2xs cursor-pointer"
+            >
+              + Create a PFL / Request
+            </button>
+          </div>
+
+          {/* Subtabs with Terracotta underline */}
+          <div className="flex items-center gap-6 border-b border-[#e5e7eb] pb-2">
+            <button
+              onClick={() => setPflTab('Open')}
+              className={`text-sm pb-1.5 cursor-pointer transition-colors ${
+                pflTab === 'Open'
+                  ? 'border-b-2 border-b-[#a75928] text-[#1c2826] font-semibold'
+                  : 'text-[#6b7280] hover:text-[#1c2826]'
+              }`}
+            >
+              Open Requests (3)
+            </button>
+            <button
+              onClick={() => setPflTab('Completed')}
+              className={`text-sm pb-1.5 cursor-pointer transition-colors ${
+                pflTab === 'Completed'
+                  ? 'border-b-2 border-b-[#a75928] text-[#1c2826] font-semibold'
+                  : 'text-[#6b7280] hover:text-[#1c2826]'
+              }`}
+            >
+              Completed (0)
+            </button>
+          </div>
+
+          <div className="pt-2">
+            <h3 className="text-base font-bold text-[#1c2826]">Open requests (3)</h3>
+            <p className="text-xs text-[#6b7280] mt-0.5">
+              Nearest deadline first · Countdown updates daily
+            </p>
+          </div>
+
+          <div className="bg-white rounded-xl border border-[#e5e7eb] shadow-2xs overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-[13px]">
+                <thead className="bg-[#fafbfb] border-b border-[#e5e7eb] text-[#6b7280] text-[11px] uppercase tracking-wider font-semibold">
+                  <tr>
+                    <th className="py-3 px-4">Client</th>
+                    <th className="py-3 px-4">Application</th>
+                    <th className="py-3 px-4">Request</th>
+                    <th className="py-3 px-4">Case Manager</th>
+                    <th className="py-3 px-4">Deadline</th>
+                    <th className="py-3 px-4">Days Left</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#f3f4f6]">
+                  {/* Row 1 matching SCR-005 */}
+                  <tr className="hover:bg-[#fbfcfb] cursor-pointer" onClick={() => onOpenMatter('DEMO-MAT-002')}>
+                    <td className="py-3.5 px-4">
+                      <div className="font-bold text-[#1c2826]">Omar Siddiqui →</div>
+                      <div className="text-xs text-[#6b7280]">File: DEMO-E654321</div>
+                    </td>
+                    <td className="py-3.5 px-4 text-[#1c2826]">Express Entry PR Application</td>
+                    <td className="py-3.5 px-4 text-[#1c2826]">Documents Requested</td>
+                    <td className="py-3.5 px-4 text-[#1c2826]">Amanpreet</td>
+                    <td className="py-3.5 px-4 text-[#1c2826]">2026-10-22</td>
+                    <td className="py-3.5 px-4">
+                      <span className="bg-[#b91c1c] text-white rounded-full px-3 py-1 text-xs font-semibold">
+                        Due today
+                      </span>
+                    </td>
+                  </tr>
+
+                  {/* Row 2 matching SCR-005 */}
+                  <tr className="hover:bg-[#fbfcfb] cursor-pointer" onClick={() => onOpenMatter('DEMO-MAT-001')}>
+                    <td className="py-3.5 px-4">
+                      <div className="font-bold text-[#1c2826]">Amandeep Singh →</div>
+                    </td>
+                    <td className="py-3.5 px-4 text-[#1c2826]">Spousal Sponsorship</td>
+                    <td className="py-3.5 px-4 text-[#1c2826]">PFL</td>
+                    <td className="py-3.5 px-4 text-[#1c2826]">Inderpreet</td>
+                    <td className="py-3.5 px-4 text-[#1c2826]">2026-10-27</td>
+                    <td className="py-3.5 px-4">
+                      <span className="bg-[#b91c1c] text-white rounded-full px-3 py-1 text-xs font-semibold">
+                        5 days left
+                      </span>
+                    </td>
+                  </tr>
+
+                  {/* Row 3 matching SCR-005 */}
+                  <tr className="hover:bg-[#fbfcfb] cursor-pointer" onClick={() => onOpenMatter('DEMO-MAT-003')}>
+                    <td className="py-3.5 px-4">
+                      <div className="font-bold text-[#1c2826]">Lucas Martin →</div>
+                      <div className="text-xs text-[#6b7280]">File: DEMO-W123456</div>
+                    </td>
+                    <td className="py-3.5 px-4 text-[#1c2826]">PRRA</td>
+                    <td className="py-3.5 px-4 text-[#1c2826]">PFL</td>
+                    <td className="py-3.5 px-4 text-[#1c2826]">Sukhman</td>
+                    <td className="py-3.5 px-4 text-[#1c2826]">2026-10-30</td>
+                    <td className="py-3.5 px-4">
+                      <span className="bg-[#eab308] text-white rounded-full px-3 py-1 text-xs font-semibold">
+                        8 days left
+                      </span>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <p className="text-xs text-[#6b7280]">
+            Click a client name to open, edit or complete the request.
+          </p>
+        </div>
+      )}
+
+      {/* ========================================================= */}
+      {/* TAB 5: NEWS (Exact SCR-010)                                */}
+      {/* ========================================================= */}
+      {activeTab === 'News' && (
+        <div className="space-y-4">
+          <h2 className="text-[20px] font-bold text-[#1c2826]">Canada Immigration News</h2>
+
+          <div className="bg-white rounded-xl border border-[#e5e7eb] p-6 shadow-2xs space-y-6">
+            <div>
+              <h3 className="text-lg font-bold text-[#1c2826]">Canada Immigration News</h3>
+              <p className="text-xs text-[#6b7280] mt-1">
+                Selected official IRCC updates · Checked October 8, 2026. This sample is a dated snapshot, not an automatic live feed.
+              </p>
+            </div>
+
+            <div className="space-y-5 divide-y divide-[#f3f4f6]">
+              <div className="pt-2">
+                <div className="text-xs text-[#6b7280]">October 7, 2026 · IRCC</div>
+                <button
+                  onClick={() => {
+                    setSelectedArticle(newsArticles[0])
+                    toast.info('Opened IRCC bulletin')
+                  }}
+                  className="text-[15px] font-bold text-[#a75928] underline hover:text-[#924c1f] cursor-pointer mt-1 text-left block"
+                >
+                  IRCC surveys Ukrainian temporary residents
+                </button>
+              </div>
+
+              <div className="pt-4">
+                <div className="text-xs text-[#6b7280]">September 29, 2026 · IRCC</div>
+                <button
+                  onClick={() => {
+                    setSelectedArticle(newsArticles[1])
+                    toast.info('Opened IRCC bulletin')
+                  }}
+                  className="text-[15px] font-bold text-[#a75928] underline hover:text-[#924c1f] cursor-pointer mt-1 text-left block"
+                >
+                  PRRA eligibility update: Israel and Palestine
+                </button>
+              </div>
+
+              <div className="pt-4">
+                <div className="text-xs text-[#6b7280]">September 9, 2026 · IRCC</div>
+                <button
+                  onClick={() => {
+                    setSelectedArticle(newsArticles[2])
+                    toast.info('Opened IRCC bulletin')
+                  }}
+                  className="text-[15px] font-bold text-[#a75928] underline hover:text-[#924c1f] cursor-pointer mt-1 text-left block"
+                >
+                  Short-term study measure for eligible work permit holders
+                </button>
+              </div>
+            </div>
+
+            <div className="pt-4 border-t border-[#f3f4f6] text-xs text-[#a75928] space-x-2 font-medium">
+              <a href="#" onClick={(e) => { e.preventDefault(); toast.info('IRCC notices feed opened'); }} className="underline hover:text-[#924c1f]">
+                See current IRCC notices
+              </a>
+              <span className="text-[#6b7280]">·</span>
+              <a href="#" onClick={(e) => { e.preventDefault(); toast.info('IRCC newsroom feed opened'); }} className="underline hover:text-[#924c1f]">
+                IRCC newsroom
+              </a>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================= */}
+      {/* TAB 6: PERSONAL REMINDERS (Exact SCR-008)                  */}
+      {/* ========================================================= */}
+      {activeTab === 'Personal Reminders' && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-[22px] font-bold text-[#1c2826]">Personal Reminders</h2>
+            <button
+              onClick={() => setIsReminderModalOpen(true)}
+              className="px-4 py-2 bg-[#a75928] hover:bg-[#924c1f] text-white rounded-md text-sm font-medium transition-colors shadow-2xs cursor-pointer"
+            >
+              + Create Reminder
+            </button>
+          </div>
+
+          {/* Urgency Tabs */}
+          <div className="flex items-center gap-4 border-b border-[#e5e7eb] pb-2 overflow-x-auto scrollbar-none text-xs">
+            <button
+              onClick={() => setRemindersUrgency('All')}
+              className={`pb-1 cursor-pointer whitespace-nowrap ${
+                remindersUrgency === 'All'
+                  ? 'border-b-2 border-b-[#a75928] font-bold text-[#1c2826]'
+                  : 'text-[#6b7280]'
+              }`}
+            >
+              All Reminders (2)
+            </button>
+            <button
+              onClick={() => setRemindersUrgency('Overdue')}
+              className={`pb-1 cursor-pointer whitespace-nowrap ${
+                remindersUrgency === 'Overdue'
+                  ? 'border-b-2 border-b-[#a75928] font-bold text-[#1c2826]'
+                  : 'text-[#6b7280]'
+              }`}
+            >
+              Overdue (1)
+            </button>
+            <button
+              onClick={() => setRemindersUrgency('Within 3 Days')}
+              className="bg-[#fff5f5] text-[#dc2626] border border-[#fca5a5] rounded-md px-3 py-1 font-semibold text-xs cursor-pointer whitespace-nowrap"
+            >
+              Within 3 Days (0)
+            </button>
+            <button
+              onClick={() => setRemindersUrgency('Within 5 Days')}
+              className={`pb-1 cursor-pointer whitespace-nowrap ${
+                remindersUrgency === 'Within 5 Days'
+                  ? 'border-b-2 border-b-[#a75928] font-bold text-[#1c2826]'
+                  : 'text-[#6b7280]'
+              }`}
+            >
+              Within 5 Days (Week) (0)
+            </button>
+            <button
+              onClick={() => setRemindersUrgency('Within 10 Days')}
+              className={`pb-1 cursor-pointer whitespace-nowrap ${
+                remindersUrgency === 'Within 10 Days'
+                  ? 'border-b-2 border-b-[#a75928] font-bold text-[#1c2826]'
+                  : 'text-[#6b7280]'
+              }`}
+            >
+              Within 10 Days (2 Weeks) (1)
+            </button>
+            <button
+              onClick={() => setRemindersUrgency('Later')}
+              className={`pb-1 cursor-pointer whitespace-nowrap ${
+                remindersUrgency === 'Later'
+                  ? 'border-b-2 border-b-[#a75928] font-bold text-[#1c2826]'
+                  : 'text-[#6b7280]'
+              }`}
+            >
+              Later (0)
+            </button>
+          </div>
+
+          {/* Case Manager Dropdown Filter */}
+          <div className="flex items-center gap-2 pt-1">
+            <span className="text-xs text-[#1c2826] font-medium">Case manager</span>
+            <select
+              value={reminderManagerFilter}
+              onChange={(e) => setReminderManagerFilter(e.target.value)}
+              className="bg-[#ebf3fc] border border-[#d2e3f8] text-[#1c385c] rounded-md px-3 py-1.5 text-xs font-medium outline-none cursor-pointer"
+            >
+              <option value="All">All case managers</option>
+              <option value="Amanpreet">Amanpreet</option>
+              <option value="Inderpreet">Inderpreet</option>
+              <option value="Sukhman">Sukhman</option>
+              <option value="Tejinder">Tejinder</option>
+            </select>
+          </div>
+
+          <p className="text-xs text-[#6b7280]">
+            Date-based reminders use Vancouver dates. Each reminder belongs to one date group. Later contains reminders more than 10 days away. Shared workspace reminders are visible to your team.
+          </p>
+
+          {/* Reminders Table matching SCR-008 */}
+          <div className="bg-white rounded-xl border border-[#e5e7eb] shadow-2xs overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-[13px]">
+                <thead className="bg-[#fafbfb] border-b border-[#e5e7eb] text-[#6b7280] text-[11px] uppercase tracking-wider font-semibold">
+                  <tr>
+                    <th className="py-3 px-4">REMINDER DATE</th>
+                    <th className="py-3 px-4">REMINDER</th>
+                    <th className="py-3 px-4">REMINDER FOR</th>
+                    <th className="py-3 px-4">RELATED APPLICATION</th>
+                    <th className="py-3 px-4">ACTION</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#f3f4f6]">
+                  {/* Row 1 */}
+                  <tr className="hover:bg-[#fbfcfb]">
+                    <td className="py-3.5 px-4">
+                      <div className="font-medium text-[#1c2826]">Oct 19</div>
+                      <span className="bg-[#dc2626] text-white rounded px-2 py-0.5 text-[11px] font-bold mt-1 inline-block">
+                        Overdue by 3 days
+                      </span>
+                    </td>
+                    <td className="py-3.5 px-4 text-[#1c2826]">
+                      Check abd IRCC news for TRV processing changes
+                    </td>
+                    <td className="py-3.5 px-4 text-[#1c2826]">Sukhman</td>
+                    <td className="py-3.5 px-4 text-[#1c2826]">General reminder</td>
+                    <td className="py-3.5 px-4 space-x-2">
+                      <button
+                        onClick={() => setIsReminderModalOpen(true)}
+                        className="bg-white border border-[#d1d5db] px-3 py-1 rounded-md text-xs font-medium text-[#374151] hover:bg-[#f9fafb] cursor-pointer shadow-2xs"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => handleToggleReminder(personalReminders[0]?.id || '1')}
+                        className="bg-white border border-[#d1d5db] px-3 py-1 rounded-md text-xs font-medium text-[#374151] hover:bg-[#f9fafb] cursor-pointer shadow-2xs"
+                      >
+                        Mark Complete
+                      </button>
+                    </td>
+                  </tr>
+
+                  {/* Row 2 */}
+                  <tr className="hover:bg-[#fbfcfb]">
+                    <td className="py-3.5 px-4">
+                      <div className="font-medium text-[#1c2826]">Oct 28</div>
+                      <span className="bg-[#e0f2fe] text-[#0284c7] rounded px-2 py-0.5 text-[11px] font-semibold mt-1 inline-block">
+                        6 days left
+                      </span>
+                    </td>
+                    <td className="py-3.5 px-4 text-[#1c2826]">
+                      Renew office professional insurance
+                    </td>
+                    <td className="py-3.5 px-4 text-[#1c2826]">Amanpreet</td>
+                    <td className="py-3.5 px-4 text-[#1c2826]">General reminder</td>
+                    <td className="py-3.5 px-4 space-x-2">
+                      <button
+                        onClick={() => setIsReminderModalOpen(true)}
+                        className="bg-white border border-[#d1d5db] px-3 py-1 rounded-md text-xs font-medium text-[#374151] hover:bg-[#f9fafb] cursor-pointer shadow-2xs"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => handleToggleReminder(personalReminders[1]?.id || '2')}
+                        className="bg-white border border-[#d1d5db] px-3 py-1 rounded-md text-xs font-medium text-[#374151] hover:bg-[#f9fafb] cursor-pointer shadow-2xs"
+                      >
+                        Mark Complete
+                      </button>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modals for Dashboard Views */}
+      <ClientUpdateModal
+        isOpen={isUpdateModalOpen}
+        onClose={() => setIsUpdateModalOpen(false)}
+        onSave={handleSaveUpdate}
+        matters={matters}
+      />
+
+      <PflModal
+        isOpen={isPflModalOpen}
+        onClose={() => setIsPflModalOpen(false)}
+        onSave={() => {}}
+        matters={matters}
+      />
+
+      <PersonalReminderModal
+        isOpen={isReminderModalOpen}
+        onClose={() => setIsReminderModalOpen(false)}
+        onSave={handleSaveReminder}
+        matters={matters}
+      />
+
+      {/* News Article Reader Modal */}
+      {selectedArticle && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4">
+          <div className="bg-white rounded-xl shadow-2xl border border-[#dfe5e3] w-full max-w-lg p-6 space-y-4 animate-fade-in">
+            <div className="flex items-center justify-between text-xs">
+              <span className="font-semibold text-[#12382e] bg-[#eef4f1] px-2 py-0.5 rounded">
+                {selectedArticle.category}
+              </span>
+              <span className="text-[#677472]">{selectedArticle.date}</span>
+            </div>
+            <h2 className="text-lg font-bold text-[#12382e]">{selectedArticle.title}</h2>
+            <p className="text-[13.5px] text-[#33423d] leading-relaxed">{selectedArticle.summary}</p>
+            <div className="pt-4 border-t border-[#edf0ee] flex items-center justify-between">
+              <span className="text-xs text-[#677472]">Official Government Release</span>
+              <button
+                onClick={() => setSelectedArticle(null)}
+                className="px-4 py-1.5 bg-[#a75928] hover:bg-[#924c1f] text-white text-xs font-semibold rounded cursor-pointer"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

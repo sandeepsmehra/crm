@@ -2,6 +2,8 @@ import React, { useState } from 'react'
 import { Client, ClientKind } from '@/types/crm'
 import { APPLICATION_TYPES } from '@/data/mockData'
 import { normalizePhone } from '@/lib/crmUtils'
+import { clientZodSchema, clientYupSchema } from '@/lib/validations'
+import { toast } from '@/components/ui/sonner'
 import { X, AlertCircle } from 'lucide-react'
 
 interface NewClientModalProps {
@@ -28,7 +30,9 @@ export function NewClientModal({
   const [expiry, setExpiry] = useState('')
   const [type, setType] = useState('Work Permit')
   const [notes, setNotes] = useState('')
+  const [receptionAlert, setReceptionAlert] = useState('')
   const [consultationDateTime, setConsultationDateTime] = useState('')
+  const [validationErrors, setValidationErrors] = useState<string[]>([])
 
   if (!isOpen) return null
 
@@ -43,19 +47,53 @@ export function NewClientModal({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    if (!name.trim()) return alert('Please enter client or company name.')
+    setValidationErrors([])
 
-    const newClient: Client = {
-      id: `C-${existingClients.length + 1}`,
+    const candidateData = {
       name: name.trim(),
-      kind,
       phone: phone.trim(),
       email: email.trim(),
+      type,
+      kind,
       dob: kind === 'Individual' ? dob : undefined,
       status: kind === 'Individual' ? status : undefined,
       expiry: kind === 'Individual' ? expiry : undefined,
-      type,
-      notes: notes.trim(),
+      receptionAlert: receptionAlert.trim() || undefined,
+      notes: notes.trim() || undefined
+    }
+
+    // 1. Zod Validation
+    const zodResult = clientZodSchema.safeParse(candidateData)
+    if (!zodResult.success) {
+      const errMsgs = zodResult.error.issues.map((i) => i.message)
+      setValidationErrors(errMsgs)
+      toast.error(errMsgs[0] || 'Validation error')
+      return
+    }
+
+    // 2. Yup Validation
+    try {
+      clientYupSchema.validateSync(candidateData, { abortEarly: false })
+    } catch (err: any) {
+      if (err.errors) {
+        setValidationErrors(err.errors)
+        toast.error(err.errors[0])
+        return
+      }
+    }
+
+    const newClient: Client = {
+      id: `C-${existingClients.length + 1}`,
+      name: candidateData.name,
+      kind,
+      phone: candidateData.phone,
+      email: candidateData.email,
+      dob: candidateData.dob,
+      status: candidateData.status,
+      expiry: candidateData.expiry,
+      type: candidateData.type,
+      receptionAlert: candidateData.receptionAlert,
+      notes: candidateData.notes || '',
       history: '',
       risks: '',
       strategy: '',
@@ -64,6 +102,7 @@ export function NewClientModal({
     }
 
     onSave(newClient, consultationDateTime)
+    toast.success(`Client profile created for ${newClient.name}`)
     onClose()
   }
 
@@ -71,23 +110,38 @@ export function NewClientModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-3 sm:p-4">
       <div className="bg-white rounded-xl shadow-2xl border border-[#dfe5e3] w-full max-w-lg overflow-hidden animate-fade-in max-h-[92vh] flex flex-col">
         {/* Header */}
-        <div className="px-4 sm:px-6 py-3.5 sm:py-4 border-b border-[#edf0ee] flex items-center justify-between bg-[#fcfdfd]">
+        <div className="px-5 py-4 border-b border-[#edf0ee] flex items-center justify-between bg-[#fcfdfd]">
           <div>
             <h2 className="text-base sm:text-lg font-bold text-[#12382e]">New Client Profile</h2>
-            <p className="text-[11.5px] sm:text-[12px] text-[#677472]">
+            <p className="text-[12px] text-[#677472]">
               Create a permanent client or employer record.
             </p>
           </div>
           <button
             onClick={onClose}
-            className="p-1 text-[#8a9895] hover:text-[#202d2d] rounded-md"
+            className="p-1 text-[#8a9895] hover:text-[#202d2d] rounded-md transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
+        {/* Validation Errors */}
+        {validationErrors.length > 0 && (
+          <div className="mx-5 mt-4 p-3 bg-red-50 border border-red-200 rounded-md text-red-800 text-[12.5px] flex items-start gap-2">
+            <AlertCircle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
+            <div>
+              <div className="font-semibold">Please fix validation errors:</div>
+              <ul className="list-disc list-inside mt-0.5 space-y-0.5 text-[12px]">
+                {validationErrors.map((msg, idx) => (
+                  <li key={idx}>{msg}</li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        )}
+
         {/* Form Body */}
-        <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-4 overflow-y-auto flex-1 text-[13.5px]">
+        <form onSubmit={handleSubmit} className="p-5 space-y-4 overflow-y-auto flex-1 text-[13.5px]">
           {duplicate && (
             <div className="p-3 bg-[#fdf2f2] border border-[#fca5a5] rounded-lg text-[#991b1b] text-[12.5px] flex items-start gap-2">
               <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-[#ae4343]" />
@@ -98,40 +152,42 @@ export function NewClientModal({
           )}
 
           <div>
-            <label className="block font-semibold text-[#202d2d] mb-1">Profile Type</label>
+            <label className="block font-semibold text-[#202d2d] mb-1">Client Kind</label>
             <div className="flex gap-4">
               <label className="flex items-center gap-2 cursor-pointer font-medium">
                 <input
                   type="radio"
-                  name="kind"
+                  name="clientKind"
                   checked={kind === 'Individual'}
                   onChange={() => setKind('Individual')}
+                  className="text-[#a7653b] focus:ring-[#a7653b]"
                 />
-                <span>Individual</span>
+                <span>Individual Client</span>
               </label>
               <label className="flex items-center gap-2 cursor-pointer font-medium">
                 <input
                   type="radio"
-                  name="kind"
+                  name="clientKind"
                   checked={kind === 'Employer'}
                   onChange={() => setKind('Employer')}
+                  className="text-[#a7653b] focus:ring-[#a7653b]"
                 />
-                <span>Employer / Company</span>
+                <span>Employer / Corporate</span>
               </label>
             </div>
           </div>
 
           <div>
             <label className="block font-semibold text-[#202d2d] mb-1">
-              {kind === 'Employer' ? 'Company Name' : 'Full Name'} *
+              {kind === 'Individual' ? 'Full Legal Name *' : 'Company / Business Name *'}
             </label>
             <input
               type="text"
-              required
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder={kind === 'Employer' ? 'e.g. Acme Construction Ltd.' : 'e.g. Jaspreet Kaur'}
-              className="w-full p-2.5 border border-[#cbd5d1] rounded-md outline-none focus:border-[#246b54]"
+              placeholder={kind === 'Individual' ? 'e.g. Gurpreet Singh' : 'e.g. Fraser Valley Foods Ltd.'}
+              className="w-full p-2 border border-[#cbd5d1] rounded-md outline-none focus:border-[#246b54]"
+              required
             />
           </div>
 
@@ -140,106 +196,75 @@ export function NewClientModal({
               <label className="block font-semibold text-[#202d2d] mb-1">Phone Number *</label>
               <input
                 type="tel"
-                required
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
                 placeholder="604-555-0100"
                 className="w-full p-2 border border-[#cbd5d1] rounded-md outline-none focus:border-[#246b54]"
+                required
               />
             </div>
             <div>
-              <label className="block font-semibold text-[#202d2d] mb-1">Email Address</label>
+              <label className="block font-semibold text-[#202d2d] mb-1">Email Address *</label>
               <input
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="client@example.com"
                 className="w-full p-2 border border-[#cbd5d1] rounded-md outline-none focus:border-[#246b54]"
-              />
-            </div>
-          </div>
-
-          {kind === 'Individual' && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label className="block font-semibold text-[#202d2d] mb-1">Date of Birth</label>
-                <input
-                  type="date"
-                  value={dob}
-                  onChange={(e) => setDob(e.target.value)}
-                  className="w-full p-2 border border-[#cbd5d1] rounded-md outline-none focus:border-[#246b54]"
-                />
-              </div>
-              <div>
-                <label className="block font-semibold text-[#202d2d] mb-1">Immigration Status</label>
-                <select
-                  value={status}
-                  onChange={(e) => setStatus(e.target.value)}
-                  className="w-full p-2 border border-[#cbd5d1] rounded-md bg-white outline-none"
-                >
-                  <option value="Work permit">Work permit</option>
-                  <option value="Study permit">Study permit</option>
-                  <option value="Visitor">Visitor</option>
-                  <option value="Permanent resident">Permanent resident</option>
-                  <option value="Out of status">Out of status</option>
-                  <option value="Other">Other</option>
-                </select>
-              </div>
-            </div>
-          )}
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <label className="block font-semibold text-[#202d2d] mb-1">Primary Inquiry Type</label>
-              <select
-                value={type}
-                onChange={(e) => setType(e.target.value)}
-                className="w-full p-2 border border-[#cbd5d1] rounded-md bg-white outline-none"
-              >
-                {APPLICATION_TYPES.map((t) => (
-                  <option key={t} value={t}>
-                    {t}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="block font-semibold text-[#202d2d] mb-1">
-                Consultation Booking (Optional)
-              </label>
-              <input
-                type="datetime-local"
-                value={consultationDateTime}
-                onChange={(e) => setConsultationDateTime(e.target.value)}
-                className="w-full p-2 border border-[#cbd5d1] rounded-md outline-none"
+                required
               />
             </div>
           </div>
 
           <div>
-            <label className="block font-semibold text-[#202d2d] mb-1">Intake / Consultation Notes</label>
+            <label className="block font-semibold text-[#202d2d] mb-1">Application Type / Service</label>
+            <select
+              value={type}
+              onChange={(e) => setType(e.target.value)}
+              className="w-full p-2 border border-[#cbd5d1] rounded-md bg-white outline-none focus:border-[#246b54]"
+            >
+              {APPLICATION_TYPES.map((t) => (
+                <option key={t} value={t}>{t}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="p-3 bg-[#fff8eb] border border-[#f5dfa8] rounded-md">
+            <label className="block font-semibold text-[#7d4e10] mb-1">Reception Alert / Staff Notice</label>
+            <input
+              type="text"
+              value={receptionAlert}
+              onChange={(e) => setReceptionAlert(e.target.value)}
+              placeholder="e.g. Urgent expiry next week / Speak Punjabi only / Cash client"
+              className="w-full p-2 border border-[#ecd5a0] rounded-md bg-white outline-none focus:border-[#a7653b] text-xs text-[#7d4e10]"
+            />
+          </div>
+
+          <div>
+            <label className="block font-semibold text-[#202d2d] mb-1">Case Notes / Background</label>
             <textarea
               rows={3}
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              placeholder="Initial enquiry details, caller background..."
-              className="w-full p-2 border border-[#cbd5d1] rounded-md outline-none"
+              placeholder="Initial consult summary or immigration history notes..."
+              className="w-full p-2.5 border border-[#cbd5d1] rounded-md outline-none focus:border-[#246b54]"
             />
           </div>
 
+          {/* Footer Buttons */}
           <div className="pt-3 border-t border-[#edf0ee] flex items-center justify-end gap-2.5">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 border border-[#cbd5d1] text-[#202d2d] hover:bg-[#f4f6f5] rounded-md font-semibold text-[13px]"
+              className="px-4 py-2 border border-[#cbd5d1] rounded-md text-[#52625a] hover:bg-[#f4f6f5] font-medium transition-colors"
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="px-5 py-2 bg-[#a7653b] hover:bg-[#8f532d] text-white rounded-md font-semibold text-[13px] shadow-xs"
+              className="px-5 py-2 bg-[#a7653b] hover:bg-[#8f532d] text-white rounded-md font-semibold transition-colors shadow-xs"
             >
-              Create Client Profile
+              Save client profile
             </button>
           </div>
         </form>

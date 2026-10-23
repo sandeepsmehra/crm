@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import { Client, Matter, Appointment } from '@/types/crm'
-import { formatDueDate } from '@/lib/crmUtils'
-import { X, User, Building2, Plus } from 'lucide-react'
+import { toast } from '@/components/ui/sonner'
+import { X, ChevronRight, ChevronDown } from 'lucide-react'
 
 interface ClientProfileModalProps {
   isOpen: boolean
@@ -15,6 +15,13 @@ interface ClientProfileModalProps {
   onBookAppointmentForClient: (clientId: string) => void
 }
 
+type ProfileTab =
+  | 'Contact Information'
+  | 'Consultation Notes'
+  | 'Applications'
+  | 'Communication Log'
+  | 'Appointments & History'
+
 export function ClientProfileModal({
   isOpen,
   onClose,
@@ -26,475 +33,585 @@ export function ClientProfileModal({
   onNewMatterForClient,
   onBookAppointmentForClient
 }: ClientProfileModalProps) {
-  const [activeTab, setActiveTab] = useState<'Contact' | 'Consultations' | 'Applications' | 'History'>('Contact')
+  const [activeTab, setActiveTab] = useState<ProfileTab>('Contact Information')
 
-  // Edit fields
-  const [name, setName] = useState(client?.name || '')
+  // Form states (SCR-023)
+  const [receptionAlert, setReceptionAlert] = useState(client?.receptionAlert || '')
+  const [fullName, setFullName] = useState(client?.name || '')
   const [phone, setPhone] = useState(client?.phone || '')
   const [email, setEmail] = useState(client?.email || '')
-  const [dob, setDob] = useState(client?.dob || '')
-  const [uci, setUci] = useState(client?.uci || '')
-  const [address, setAddress] = useState(client?.address || '')
-  const [status, setStatus] = useState(client?.status || 'Work permit')
-  const [expiry, setExpiry] = useState(client?.expiry || '')
-  const [receptionAlert, setReceptionAlert] = useState(client?.receptionAlert || '')
-  const [historyNotes, setHistoryNotes] = useState(client?.history || '')
-  const [consultNotes, setConsultNotes] = useState(client?.notes || '')
-  const [risks, setRisks] = useState(client?.risks || '')
-  const [strategy, setStrategy] = useState(client?.strategy || '')
+  const [dob, setDob] = useState(client?.dob || '1970-01-10')
+  const [address, setAddress] = useState(client?.address || '100 Example Street, Surrey, BC')
+  const [uci, setUci] = useState(client?.uci || 'DEMO-20000')
+  const [immigrationStatus, setImmigrationStatus] = useState(client?.status || 'Visitor')
+  const [statusExpiry, setStatusExpiry] = useState(client?.expiry || '')
+  const [preferredLanguage, setPreferredLanguage] = useState(client?.preferredLanguage || 'English')
 
-  // Employer fields
-  const [contacts, setContacts] = useState(client?.contacts || '')
-  const [locations, setLocations] = useState(client?.locations || '')
-  const [workers, setWorkers] = useState(client?.workers || '')
+  // Consultation Notes states (SCR-024)
+  const [generalBackgroundOpen, setGeneralBackgroundOpen] = useState(false)
+  const [consultationNotesText, setConsultationNotesText] = useState(client?.notes || '')
 
-  // Consultation outcome
-  const [consultationOutcome, setConsultationOutcome] = useState<'No Change' | 'Retained' | 'Potential' | 'Closed'>('No Change')
-  const [outcomeReason, setOutcomeReason] = useState('')
-  const [followupDate, setFollowupDate] = useState('')
+  // Communication Log states (SCR-026)
+  const [commType, setCommType] = useState('Phone call')
+  const [commDate, setCommDate] = useState('2026-10-22')
+  const [commSummary, setCommSummary] = useState('')
+
+  // Appointments History state (SCR-027)
+  const [appt1Open, setAppt1Open] = useState(false)
+  const [appt2Open, setAppt2Open] = useState(false)
 
   if (!isOpen || !client) return null
 
   const clientMatters = matters.filter((m) => m.clientId === client.id)
-  const clientAppointments = appointments.filter((a) => a.client === client.id)
 
-  const handleSave = (openMatterAfter: boolean = false) => {
-    const updated: Client = {
+  const handleSave = () => {
+    onSaveClient({
       ...client,
-      name: name.trim(),
-      phone: phone.trim(),
-      email: email.trim(),
-      dob: client.kind === 'Individual' ? dob : undefined,
-      uci: uci.trim(),
-      address: address.trim(),
-      status: client.kind === 'Individual' ? status : undefined,
-      expiry: client.kind === 'Individual' ? expiry : undefined,
-      receptionAlert: receptionAlert.trim(),
-      history: historyNotes.trim(),
-      notes: consultNotes.trim(),
-      risks: risks.trim(),
-      strategy: strategy.trim(),
-      contacts: client.kind === 'Employer' ? contacts.trim() : undefined,
-      locations: client.kind === 'Employer' ? locations.trim() : undefined,
-      workers: client.kind === 'Employer' ? workers.trim() : undefined
-    }
-
-    onSaveClient(updated)
-    if (openMatterAfter) {
-      onNewMatterForClient(client.id)
-    }
+      name: fullName,
+      phone,
+      email,
+      dob,
+      address,
+      uci,
+      status: immigrationStatus,
+      expiry: statusExpiry,
+      receptionAlert,
+      notes: consultationNotesText,
+      preferredLanguage
+    })
+    toast.success('Client profile saved')
     onClose()
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-3 sm:p-4">
-      <div className="bg-white rounded-xl shadow-2xl border border-[#dfe5e3] w-full max-w-2xl 2xl:max-w-3xl overflow-hidden animate-fade-in max-h-[92vh] flex flex-col">
-        {/* Header */}
-        <div className="px-4 sm:px-6 py-3.5 sm:py-4 border-b border-[#edf0ee] flex items-center justify-between bg-[#fcfdfd]">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-[#12382e] text-white flex items-center justify-center font-bold text-sm shrink-0">
-              {client.kind === 'Employer' ? <Building2 className="w-5 h-5" /> : <User className="w-5 h-5" />}
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h2 className="text-base sm:text-xl font-bold text-[#12382e]">{client.name}</h2>
-                <span className="badge blue text-[11px]">{client.kind}</span>
-                <span className="text-[12px] text-[#8ba79b]">({client.id})</span>
-              </div>
-              <div className="text-[11.5px] sm:text-[12px] text-[#677472]">
-                {client.phone} · {client.email || 'No email'} · {client.uci || 'UCI: Pending'}
-              </div>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-3 sm:p-6 overflow-y-auto">
+      <div className="bg-white rounded-2xl shadow-2xl border border-[#d1d5db] w-full max-w-4xl overflow-hidden my-auto animate-fade-in flex flex-col max-h-[92vh]">
+        {/* Modal Header (SCR-023 to SCR-027) */}
+        <div className="p-6 pb-4 flex items-start justify-between">
+          <div>
+            <h1 className="text-2xl sm:text-[26px] font-bold text-[#111827]">
+              Client profile · {fullName}
+            </h1>
+            <div className="text-xs text-[#6b7280] mt-1">
+              {client.id} · {phone}
             </div>
           </div>
+
           <button
             onClick={onClose}
-            className="p-1 text-[#8a9895] hover:text-[#202d2d] rounded-md shrink-0"
+            className="w-9 h-9 rounded-xl border border-black/80 flex items-center justify-center hover:bg-gray-100 transition-colors shrink-0 cursor-pointer"
           >
-            <X className="w-5 h-5" />
+            <X className="w-5 h-5 text-black" />
           </button>
         </div>
 
-        {/* Tab Navigation */}
-        <div className="px-3 sm:px-6 bg-[#f8faf9] border-b border-[#edf0ee] flex gap-1 sm:gap-2 overflow-x-auto scrollbar-none">
-          {[
-            ['Contact', 'Profile Info'],
-            ['Consultations', 'Consultation & Strategy'],
-            ['Applications', `Applications (${clientMatters.length})`],
-            ['History', 'Visits & Appointments']
-          ].map(([tabKey, label]) => (
-            <button
-              key={tabKey}
-              onClick={() => setActiveTab(tabKey as any)}
-              className={`py-3 px-2 sm:px-3 text-[12.5px] sm:text-[13px] font-semibold border-b-2 transition-all whitespace-nowrap ${
-                activeTab === tabKey
-                  ? 'border-[#a7653b] text-[#a7653b]'
-                  : 'border-transparent text-[#677472] hover:text-[#202d2d]'
-              }`}
-            >
-              {label}
-            </button>
-          ))}
+        {/* Pill Tabs Row (SCR-023) */}
+        <div className="px-6 flex flex-wrap items-center gap-2 select-none border-b border-[#e5e7eb] pb-4">
+          {(
+            [
+              'Contact Information',
+              'Consultation Notes',
+              'Applications',
+              'Communication Log',
+              'Appointments & History'
+            ] as ProfileTab[]
+          ).map((tab) => {
+            const isActive = activeTab === tab
+            return (
+              <button
+                key={tab}
+                onClick={() => setActiveTab(tab)}
+                className={`px-4 py-2 rounded-md text-xs sm:text-sm font-medium transition-colors cursor-pointer ${
+                  isActive
+                    ? 'bg-[#1f382f] text-white'
+                    : 'bg-white border border-[#d1d5db] text-[#374151] hover:bg-[#f9fafb]'
+                }`}
+              >
+                {tab}
+              </button>
+            )
+          })}
         </div>
 
         {/* Modal Body */}
-        <div className="p-4 sm:p-6 overflow-y-auto flex-1 text-[13.5px] space-y-4">
-          {/* TAB 1: CONTACT */}
-          {activeTab === 'Contact' && (
-            <div className="space-y-4">
-              <div>
-                <label className="block font-semibold text-[#202d2d] mb-1">
-                  {client.kind === 'Employer' ? 'Company Name' : 'Full Name'}
+        <div className="p-6 overflow-y-auto flex-1 text-sm space-y-6">
+          {/* ======================================================== */}
+          {/* TAB 1: CONTACT INFORMATION (SCR-023)                     */}
+          {/* ======================================================== */}
+          {activeTab === 'Contact Information' && (
+            <div className="space-y-5">
+              <h2 className="text-base font-bold text-[#111827]">Contact Information</h2>
+
+              {/* Reception Alert Box */}
+              <div className="bg-[#fffdf5] border border-[#fde68a] rounded-xl p-4 space-y-2">
+                <label className="block text-sm font-bold text-[#111827]">
+                  Reception Alert — internal booking instructions
                 </label>
-                <input
-                  type="text"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  className="w-full p-2 border border-[#cbd5d1] rounded-md outline-none"
+                <textarea
+                  rows={3}
+                  value={receptionAlert}
+                  onChange={(e) => setReceptionAlert(e.target.value)}
+                  className="w-full bg-white border border-[#d1d5db] rounded-lg p-2.5 text-sm text-[#111827] outline-none"
                 />
+                <p className="text-xs text-[#6b7280]">
+                  Shown to reception when this client is selected for booking. Reception must confirm the client was informed and agreed. Leave blank to clear.
+                </p>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {/* Fields Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <div>
-                  <label className="block font-semibold text-[#202d2d] mb-1">Phone Number</label>
+                  <label className="block text-sm font-semibold text-[#111827] mb-1.5">
+                    Full name
+                  </label>
                   <input
-                    type="tel"
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    className="w-full p-2 border border-[#cbd5d1] rounded-md outline-none"
+                    type="text"
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                    className="w-full bg-white border border-[#d1d5db] rounded-lg px-3.5 py-2.5 text-sm text-[#111827] outline-none"
                   />
                 </div>
+
                 <div>
-                  <label className="block font-semibold text-[#202d2d] mb-1">Email Address</label>
+                  <label className="block text-sm font-semibold text-[#111827] mb-1.5">
+                    Phone number
+                  </label>
+                  <input
+                    type="text"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    className="w-full bg-white border border-[#d1d5db] rounded-lg px-3.5 py-2.5 text-sm text-[#111827] outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-[#111827] mb-1.5">
+                    Email
+                  </label>
                   <input
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="w-full p-2 border border-[#cbd5d1] rounded-md outline-none"
+                    className="w-full bg-white border border-[#d1d5db] rounded-lg px-3.5 py-2.5 text-sm text-[#111827] outline-none"
                   />
                 </div>
-              </div>
 
-              {client.kind === 'Individual' ? (
-                <>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div>
-                      <label className="block font-semibold text-[#202d2d] mb-1">UCI Number</label>
-                      <input
-                        type="text"
-                        value={uci}
-                        onChange={(e) => setUci(e.target.value)}
-                        className="w-full p-2 border border-[#cbd5d1] rounded-md outline-none"
-                      />
-                    </div>
-                    <div>
-                      <label className="block font-semibold text-[#202d2d] mb-1">Date of Birth</label>
-                      <input
-                        type="date"
-                        value={dob}
-                        onChange={(e) => setDob(e.target.value)}
-                        className="w-full p-2 border border-[#cbd5d1] rounded-md outline-none"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div>
-                      <label className="block font-semibold text-[#202d2d] mb-1">Current Immigration Status</label>
-                      <select
-                        value={status}
-                        onChange={(e) => setStatus(e.target.value)}
-                        className="w-full p-2 border border-[#cbd5d1] rounded-md bg-white outline-none"
-                      >
-                        <option value="Work permit">Work permit</option>
-                        <option value="Study permit">Study permit</option>
-                        <option value="Visitor">Visitor</option>
-                        <option value="Permanent resident">Permanent resident</option>
-                        <option value="Refugee Claimant">Refugee Claimant</option>
-                        <option value="Out of status">Out of status</option>
-                        <option value="Other">Other</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block font-semibold text-[#202d2d] mb-1">Status Expiry Date</label>
-                      <input
-                        type="date"
-                        value={expiry}
-                        onChange={(e) => setExpiry(e.target.value)}
-                        className="w-full p-2 border border-[#cbd5d1] rounded-md outline-none"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block font-semibold text-[#202d2d] mb-1">Residential Address</label>
-                    <input
-                      type="text"
-                      value={address}
-                      onChange={(e) => setAddress(e.target.value)}
-                      placeholder="Street, City, Postal Code"
-                      className="w-full p-2 border border-[#cbd5d1] rounded-md outline-none"
-                    />
-                  </div>
-                </>
-              ) : (
-                <div className="space-y-3">
-                  <div>
-                    <label className="block font-semibold text-[#202d2d] mb-1">Company Contacts</label>
-                    <input
-                      type="text"
-                      value={contacts}
-                      onChange={(e) => setContacts(e.target.value)}
-                      className="w-full p-2 border border-[#cbd5d1] rounded-md outline-none"
-                    />
-                  </div>
-                  <div>
-                    <label className="block font-semibold text-[#202d2d] mb-1">Work Locations</label>
-                    <input
-                      type="text"
-                      value={locations}
-                      onChange={(e) => setLocations(e.target.value)}
-                      className="w-full p-2 border border-[#cbd5d1] rounded-md outline-none"
-                    />
-                  </div>
-                  <div>
-                    <label className="block font-semibold text-[#202d2d] mb-1">Foreign Workers</label>
-                    <input
-                      type="text"
-                      value={workers}
-                      onChange={(e) => setWorkers(e.target.value)}
-                      placeholder="e.g. 1 foreign worker Carpenter"
-                      className="w-full p-2 border border-[#cbd5d1] rounded-md outline-none"
-                    />
-                  </div>
+                <div>
+                  <label className="block text-sm font-semibold text-[#111827] mb-1.5">
+                    Date of birth
+                  </label>
+                  <input
+                    type="date"
+                    value={dob}
+                    onChange={(e) => setDob(e.target.value)}
+                    className="w-full bg-white border border-[#d1d5db] rounded-lg px-3.5 py-2 text-sm text-[#111827] outline-none"
+                  />
                 </div>
-              )}
 
-              <div>
-                <label className="block font-semibold text-[#202d2d] mb-1">Reception Warning Alert (Optional)</label>
-                <input
-                  type="text"
-                  value={receptionAlert}
-                  onChange={(e) => setReceptionAlert(e.target.value)}
-                  placeholder="Notes shown to reception during booking calls..."
-                  className="w-full p-2 border border-[#cbd5d1] rounded-md outline-none text-[#ae4343]"
-                />
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-semibold text-[#111827] mb-1.5">
+                    Address
+                  </label>
+                  <input
+                    type="text"
+                    value={address}
+                    onChange={(e) => setAddress(e.target.value)}
+                    className="w-full bg-white border border-[#d1d5db] rounded-lg px-3.5 py-2.5 text-sm text-[#111827] outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-[#111827] mb-1.5">
+                    UCI / reference
+                  </label>
+                  <input
+                    type="text"
+                    value={uci}
+                    onChange={(e) => setUci(e.target.value)}
+                    className="w-full bg-white border border-[#d1d5db] rounded-lg px-3.5 py-2.5 text-sm text-[#111827] outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-[#111827] mb-1.5">
+                    Current immigration status
+                  </label>
+                  <input
+                    type="text"
+                    value={immigrationStatus}
+                    onChange={(e) => setImmigrationStatus(e.target.value)}
+                    className="w-full bg-white border border-[#d1d5db] rounded-lg px-3.5 py-2.5 text-sm text-[#111827] outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-[#111827] mb-1.5">
+                    Status expiry
+                  </label>
+                  <input
+                    type="date"
+                    value={statusExpiry}
+                    onChange={(e) => setStatusExpiry(e.target.value)}
+                    className="w-full bg-white border border-[#d1d5db] rounded-lg px-3.5 py-2 text-sm text-[#111827] outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-[#111827] mb-1.5">
+                    Preferred language
+                  </label>
+                  <input
+                    type="text"
+                    value={preferredLanguage}
+                    onChange={(e) => setPreferredLanguage(e.target.value)}
+                    className="w-full bg-white border border-[#d1d5db] rounded-lg px-3.5 py-2.5 text-sm text-[#111827] outline-none"
+                  />
+                </div>
               </div>
             </div>
           )}
 
-          {/* TAB 2: CONSULTATIONS */}
-          {activeTab === 'Consultations' && (
-            <div className="space-y-4">
-              <div>
-                <label className="block font-semibold text-[#202d2d] mb-1">
-                  Immigration History / Previous Refusals
-                </label>
-                <textarea
-                  rows={2}
-                  value={historyNotes}
-                  onChange={(e) => setHistoryNotes(e.target.value)}
-                  className="w-full p-2 border border-[#cbd5d1] rounded-md outline-none"
-                />
+          {/* ======================================================== */}
+          {/* TAB 2: CONSULTATION NOTES (SCR-024)                      */}
+          {/* ======================================================== */}
+          {activeTab === 'Consultation Notes' && (
+            <div className="space-y-5">
+              <h2 className="text-base font-bold text-[#111827]">Consultation Notes</h2>
+
+              <div className="rounded-xl border border-[#e5e7eb] overflow-hidden shadow-2xs">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-[#1f382f] text-white font-semibold">
+                    <tr>
+                      <th className="py-3 px-4">Consultation</th>
+                      <th className="py-3 px-4">Date</th>
+                      <th className="py-3 px-4">Consultation type</th>
+                      <th className="py-3 px-4">Brief notes</th>
+                      <th className="py-3 px-4 text-right">+</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr className="border-t border-[#e5e7eb] hover:bg-[#fafbfb]">
+                      <td className="py-3.5 px-4 font-bold text-[#111827]">1st Consultation</td>
+                      <td className="py-3.5 px-4 text-[#374151]">2026-09-28</td>
+                      <td className="py-3.5 px-4 text-[#a75928] font-medium">Initial consultation</td>
+                      <td className="py-3.5 px-4 text-[#374151]">Discuss Work Permit</td>
+                      <td className="py-3.5 px-4 text-right text-base text-[#6b7280] font-bold">+</td>
+                    </tr>
+                  </tbody>
+                </table>
               </div>
 
               <div>
-                <label className="block font-semibold text-[#202d2d] mb-1">Consultation Discussion Notes</label>
-                <textarea
-                  rows={3}
-                  value={consultNotes}
-                  onChange={(e) => setConsultNotes(e.target.value)}
-                  className="w-full p-2 border border-[#cbd5d1] rounded-md outline-none"
-                />
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-semibold text-[#202d2d] mb-1">Risks & Important Facts</label>
-                  <textarea
-                    rows={2}
-                    value={risks}
-                    onChange={(e) => setRisks(e.target.value)}
-                    className="w-full p-2 border border-[#cbd5d1] rounded-md outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="block font-semibold text-[#202d2d] mb-1">Recommended Legal Strategy</label>
-                  <textarea
-                    rows={2}
-                    value={strategy}
-                    onChange={(e) => setStrategy(e.target.value)}
-                    className="w-full p-2 border border-[#cbd5d1] rounded-md outline-none"
-                  />
-                </div>
-              </div>
-
-              {/* Consultation Outcome Section */}
-              <div className="p-3.5 bg-[#f0f5f2] border border-[#c5ddd0] rounded-lg space-y-3">
-                <div className="font-bold text-[#12382e] text-[13px]">Consultation Decision & Outcome</div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-[12px] font-semibold text-[#677472] mb-1">Outcome Status</label>
-                    <select
-                      value={consultationOutcome}
-                      onChange={(e) => setConsultationOutcome(e.target.value as any)}
-                      className="w-full p-2 border border-[#cbd5d1] rounded-md bg-white outline-none"
-                    >
-                      <option value="No Change">No Change / In Review</option>
-                      <option value="Retained">Retained (Proceed to Open Matter)</option>
-                      <option value="Potential">Potential Client (Follow-up scheduled)</option>
-                      <option value="Closed">Closed / Not Proceeding</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-[12px] font-semibold text-[#677472] mb-1">Follow-up Date</label>
-                    <input
-                      type="date"
-                      value={followupDate}
-                      onChange={(e) => setFollowupDate(e.target.value)}
-                      className="w-full p-2 border border-[#cbd5d1] rounded-md bg-white outline-none"
-                    />
-                  </div>
-                </div>
-
-                {['Potential', 'Closed'].includes(consultationOutcome) && (
-                  <div>
-                    <label className="block text-[12px] font-semibold text-[#677472] mb-1">
-                      Reason / Solution Discussed *
-                    </label>
-                    <input
-                      type="text"
-                      value={outcomeReason}
-                      onChange={(e) => setOutcomeReason(e.target.value)}
-                      placeholder="e.g. Needs to obtain IELTS result first; follow-up scheduled"
-                      className="w-full p-2 border border-[#cbd5d1] rounded-md bg-white outline-none text-[13px]"
-                    />
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* TAB 3: APPLICATIONS */}
-          {activeTab === 'Applications' && (
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="font-bold text-[15px] text-[#202d2d]">Associated Matters</h3>
                 <button
-                  type="button"
-                  onClick={() => {
-                    onClose()
-                    onNewMatterForClient(client.id)
-                  }}
-                  className="px-3 py-1.5 bg-[#a7653b] hover:bg-[#8f532d] text-white rounded text-[12.5px] font-semibold flex items-center gap-1"
+                  onClick={() => toast.info('New consultation opened')}
+                  className="bg-white hover:bg-[#f9fafb] border border-[#d1d5db] text-[#111827] rounded-lg px-4 py-2 text-xs font-semibold transition-colors shadow-2xs cursor-pointer"
                 >
-                  <Plus className="w-3.5 h-3.5" />
-                  <span>Start New Application</span>
+                  + Add Consultation
                 </button>
               </div>
 
-              <div className="space-y-2.5">
-                {clientMatters.map((m) => (
-                  <div
-                    key={m.id}
-                    className="p-3 bg-[#f8faf9] border border-[#edf0ee] rounded-lg flex items-center justify-between"
-                  >
-                    <div>
-                      <div className="font-bold text-[#12382e]">{m.type}</div>
-                      <div className="text-[11.5px] text-[#677472]">
-                        {m.id} · Case Manager: {m.owner} · Stage {m.stage} ({m.ball})
-                      </div>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        onClose()
-                        onOpenMatter(m.id)
-                      }}
-                      className="px-3 py-1 bg-white hover:bg-[#edf2ef] border border-[#cbd5d1] rounded text-[12px] font-semibold text-[#202d2d]"
-                    >
-                      Open matter
-                    </button>
-                  </div>
-                ))}
-
-                {clientMatters.length === 0 && (
-                  <div className="text-center py-8 text-[#8ba79b]">
-                    No open matters for this client. Click "Start New Application" above.
+              <div className="pt-2">
+                <button
+                  onClick={() => setGeneralBackgroundOpen(!generalBackgroundOpen)}
+                  className="flex items-center gap-2 text-sm font-bold text-[#111827] hover:text-[#a75928] cursor-pointer"
+                >
+                  {generalBackgroundOpen ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                  <span>General background & previously saved profile notes</span>
+                </button>
+                {generalBackgroundOpen && (
+                  <div className="mt-3">
+                    <textarea
+                      rows={5}
+                      value={consultationNotesText}
+                      onChange={(e) => setConsultationNotesText(e.target.value)}
+                      placeholder="Add general notes..."
+                      className="w-full bg-white border border-[#d1d5db] rounded-lg p-3 text-sm text-[#111827] outline-none"
+                    />
                   </div>
                 )}
               </div>
             </div>
           )}
 
-          {/* TAB 4: HISTORY */}
-          {activeTab === 'History' && (
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <h3 className="font-bold text-[15px] text-[#202d2d]">Appointment & Visit History</h3>
+          {/* ======================================================== */}
+          {/* TAB 3: APPLICATIONS (SCR-025)                            */}
+          {/* ======================================================== */}
+          {activeTab === 'Applications' && (
+            <div className="space-y-5">
+              <h2 className="text-base font-bold text-[#111827]">Applications</h2>
+
+              <button
+                onClick={() => {
+                  onClose()
+                  onNewMatterForClient(client.id)
+                }}
+                className="bg-[#1f382f] hover:bg-[#162a23] text-white px-4 py-2 rounded-lg font-medium text-xs transition-colors shadow-2xs cursor-pointer"
+              >
+                + Start Application
+              </button>
+
+              <div className="space-y-4 pt-1">
+                {clientMatters.length > 0 ? (
+                  clientMatters.map((m, idx) => (
+                    <div
+                      key={m.id}
+                      className="p-5 border border-[#e5e7eb] rounded-xl bg-white shadow-2xs space-y-3"
+                    >
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <h3 className="text-base font-bold text-[#111827]">{m.type}</h3>
+                          <div className="text-xs text-[#6b7280] mt-1">
+                            Application No. {idx + 1} · Date created: Oct 8, 2026
+                          </div>
+                          <div className="text-xs text-[#6b7280]">
+                            {m.id} · Submission deadline: {m.due || '2026-11-17'}
+                          </div>
+                        </div>
+                        <span className="bg-[#f3f4f6] text-[#374151] px-3 py-1 rounded-full text-xs font-medium">
+                          To-Do / Under Process
+                        </span>
+                      </div>
+
+                      <p className="text-xs text-[#374151]">
+                        {m.overview || `Demo case overview for ${client.name} (${m.type}).`}
+                      </p>
+
+                      <div className="flex items-center gap-3 pt-1">
+                        <button
+                          onClick={() => {
+                            onClose()
+                            onOpenMatter(m.id)
+                          }}
+                          className="bg-white hover:bg-[#f9fafb] border border-[#d1d5db] text-[#111827] rounded-lg px-4 py-1.5 text-xs font-medium transition-colors shadow-2xs cursor-pointer"
+                        >
+                          Open application
+                        </button>
+                        <button
+                          onClick={() => {
+                            onClose()
+                            onOpenMatter(m.id)
+                          }}
+                          className="bg-white hover:bg-[#f9fafb] border border-[#d1d5db] text-[#111827] rounded-lg px-4 py-1.5 text-xs font-medium transition-colors shadow-2xs cursor-pointer"
+                        >
+                          Case work & documents
+                        </button>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="p-5 border border-[#e5e7eb] rounded-xl bg-white shadow-2xs space-y-3">
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <h3 className="text-base font-bold text-[#111827]">Work Permit</h3>
+                        <div className="text-xs text-[#6b7280] mt-1">
+                          Application No. 1 · Date created: Oct 8, 2026
+                        </div>
+                        <div className="text-xs text-[#6b7280]">
+                          NR-demo-01 · Submission deadline: 2026-11-17
+                        </div>
+                      </div>
+                      <span className="bg-[#f3f4f6] text-[#374151] px-3 py-1 rounded-full text-xs font-medium">
+                        To-Do / Under Process
+                      </span>
+                    </div>
+
+                    <p className="text-xs text-[#374151]">
+                      Demo case overview for {client.name} (Work Permit).
+                    </p>
+
+                    <div className="flex items-center gap-3 pt-1">
+                      <button
+                        onClick={() => {
+                          onClose()
+                          onOpenMatter('NR-demo-01')
+                        }}
+                        className="bg-white hover:bg-[#f9fafb] border border-[#d1d5db] text-[#111827] rounded-lg px-4 py-1.5 text-xs font-medium transition-colors shadow-2xs cursor-pointer"
+                      >
+                        Open application
+                      </button>
+                      <button
+                        onClick={() => {
+                          onClose()
+                          onOpenMatter('NR-demo-01')
+                        }}
+                        className="bg-white hover:bg-[#f9fafb] border border-[#d1d5db] text-[#111827] rounded-lg px-4 py-1.5 text-xs font-medium transition-colors shadow-2xs cursor-pointer"
+                      >
+                        Case work & documents
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* ======================================================== */}
+          {/* TAB 4: COMMUNICATION LOG (SCR-026)                       */}
+          {/* ======================================================== */}
+          {activeTab === 'Communication Log' && (
+            <div className="space-y-5">
+              <div>
+                <h2 className="text-base font-bold text-[#111827]">Communication Log</h2>
+                <p className="text-xs text-[#6b7280] mt-0.5">
+                  Record a conversation or message. Saving a log entry does not send a message.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-semibold text-[#111827] mb-1.5">
+                    Communication type
+                  </label>
+                  <select
+                    value={commType}
+                    onChange={(e) => setCommType(e.target.value)}
+                    className="w-full bg-[#ebf3fc] border border-[#d2e3f8] text-[#1c385c] rounded-lg px-3.5 py-2.5 text-sm font-medium outline-none cursor-pointer"
+                  >
+                    <option value="Phone call">Phone call</option>
+                    <option value="Email">Email</option>
+                    <option value="In-person meeting">In-person meeting</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-[#111827] mb-1.5">
+                    Date
+                  </label>
+                  <input
+                    type="date"
+                    value={commDate}
+                    onChange={(e) => setCommDate(e.target.value)}
+                    className="w-full bg-white border border-[#d1d5db] rounded-lg px-3.5 py-2 text-sm text-[#111827] outline-none"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-[#111827] mb-1.5">
+                  Summary / follow-up
+                </label>
+                <textarea
+                  rows={4}
+                  value={commSummary}
+                  onChange={(e) => setCommSummary(e.target.value)}
+                  className="w-full bg-white border border-[#d1d5db] rounded-lg p-3 text-sm text-[#111827] outline-none"
+                />
+              </div>
+
+              <div>
                 <button
-                  type="button"
+                  onClick={() => {
+                    toast.success('Log entry saved')
+                    setCommSummary('')
+                  }}
+                  className="bg-white hover:bg-[#f9fafb] border border-[#d1d5db] text-[#111827] rounded-lg px-4 py-2 text-xs font-semibold transition-colors shadow-2xs cursor-pointer"
+                >
+                  Save log entry
+                </button>
+              </div>
+
+              <p className="text-xs text-[#6b7280]">No communication entries yet.</p>
+
+              <div className="pt-2 border-t border-[#e5e7eb] space-y-3">
+                <h3 className="text-sm font-bold text-[#111827]">Calls & tasks already recorded</h3>
+                <div className="space-y-0.5">
+                  <div className="font-bold text-[#111827] text-sm">
+                    {fullName} called asking for a file update. Call back.
+                  </div>
+                  <div className="text-xs text-[#6b7280]">
+                    2026-10-18 · Sukhman · Pending
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => toast.success('Call recorded and task assigned')}
+                  className="bg-white hover:bg-[#f9fafb] border border-[#d1d5db] text-[#111827] rounded-lg px-4 py-2 text-xs font-semibold transition-colors shadow-2xs cursor-pointer"
+                >
+                  Save & record call / assign task
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* ======================================================== */}
+          {/* TAB 5: APPOINTMENTS & HISTORY (SCR-027)                  */}
+          {/* ======================================================== */}
+          {activeTab === 'Appointments & History' && (
+            <div className="space-y-4">
+              <h2 className="text-base font-bold text-[#111827]">Appointments & History</h2>
+
+              <div>
+                <button
                   onClick={() => {
                     onClose()
                     onBookAppointmentForClient(client.id)
                   }}
-                  className="text-[12.5px] font-semibold text-[#a7653b] hover:underline"
+                  className="bg-white hover:bg-[#f9fafb] border border-[#d1d5db] text-[#111827] rounded-lg px-4 py-2 text-xs font-semibold transition-colors shadow-2xs cursor-pointer"
                 >
-                  + Book new appointment
+                  Save & book appointment
                 </button>
               </div>
 
-              <div className="space-y-2">
-                {clientAppointments.map((a) => (
-                  <div
-                    key={a.id}
-                    className="p-2.5 bg-[#f8faf9] border border-[#edf0ee] rounded-lg text-[13px] flex items-center justify-between"
+              <div className="space-y-2 pt-2">
+                <div>
+                  <button
+                    onClick={() => setAppt1Open(!appt1Open)}
+                    className="flex items-center gap-2 text-sm font-bold text-[#111827] hover:text-[#a75928] cursor-pointer"
                   >
-                    <div>
-                      <div className="font-bold text-[#12382e]">
-                        {formatDueDate(a.date)} · {a.time} ({a.duration}m)
-                      </div>
-                      <div className="text-[11.5px] text-[#677472]">{a.notes || a.service}</div>
+                    {appt1Open ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                    <span>2026-10-21 11:00 · Scheduled · Tejinder</span>
+                  </button>
+                  {appt1Open && (
+                    <div className="mt-2 ml-6 p-3 bg-[#fafbfb] border border-[#e5e7eb] rounded-lg text-xs text-[#374151]">
+                      Follow-up consultation booked for work permit review.
                     </div>
-                    <span className="badge green">{a.status}</span>
-                  </div>
-                ))}
+                  )}
+                </div>
 
-                {clientAppointments.length === 0 && (
-                  <div className="text-center py-6 text-[#8ba79b]">
-                    No past appointments recorded for this profile.
-                  </div>
-                )}
+                <div>
+                  <button
+                    onClick={() => setAppt2Open(!appt2Open)}
+                    className="flex items-center gap-2 text-sm font-bold text-[#111827] hover:text-[#a75928] cursor-pointer"
+                  >
+                    {appt2Open ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                    <span>2026-09-28 10:00 · Completed · Tejinder</span>
+                  </button>
+                  {appt2Open && (
+                    <div className="mt-2 ml-6 p-3 bg-[#fafbfb] border border-[#e5e7eb] rounded-lg text-xs text-[#374151]">
+                      Initial consultation completed; client retained Nationrise.
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           )}
         </div>
 
-        {/* Footer */}
-        <div className="px-4 sm:px-6 py-3 sm:py-4 border-t border-[#edf0ee] bg-[#fcfdfd] flex flex-wrap items-center justify-between gap-3">
-          <button
-            type="button"
-            onClick={() => handleSave(true)}
-            className="px-3.5 py-2 bg-[#246b54] hover:bg-[#1a503e] text-white rounded-md text-[13px] font-semibold shadow-xs"
-          >
-            Save & Open Matter
-          </button>
-
-          <div className="flex items-center gap-2">
+        {/* Modal Footer (SCR-023 to SCR-027) */}
+        <div className="p-4 px-6 border-t border-[#e5e7eb] flex items-center justify-end gap-3 bg-white">
+          {activeTab === 'Consultation Notes' ? (
             <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 border border-[#cbd5d1] text-[#202d2d] hover:bg-[#f4f6f5] rounded-md font-semibold text-[13px]"
+              onClick={handleSave}
+              className="bg-white hover:bg-[#f9fafb] border border-[#d1d5db] text-[#111827] rounded-lg px-5 py-2 text-sm font-medium transition-colors shadow-2xs cursor-pointer"
             >
-              Cancel
+              Close and Save
             </button>
-            <button
-              type="button"
-              onClick={() => handleSave(false)}
-              className="px-5 py-2 bg-[#a7653b] hover:bg-[#8f532d] text-white rounded-md font-semibold text-[13px] shadow-xs"
-            >
-              Save Profile
-            </button>
-          </div>
+          ) : (
+            <>
+              <button
+                onClick={onClose}
+                className="bg-white hover:bg-[#f9fafb] border border-[#d1d5db] text-[#111827] rounded-lg px-5 py-2 text-sm font-medium transition-colors shadow-2xs cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSave}
+                className="bg-[#a75928] hover:bg-[#924c1f] text-white rounded-lg px-5 py-2 text-sm font-medium transition-colors shadow-2xs cursor-pointer"
+              >
+                Save profile
+              </button>
+            </>
+          )}
         </div>
       </div>
     </div>

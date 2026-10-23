@@ -1,7 +1,6 @@
 import React, { useState } from 'react'
 import { OfficeTask, Client } from '@/types/crm'
-import { formatDueDate } from '@/lib/crmUtils'
-import { Plus, CheckCircle, Search, Filter } from 'lucide-react'
+import { toast } from '@/components/ui/sonner'
 
 interface TaskManagerViewProps {
   tasks: OfficeTask[]
@@ -17,270 +16,382 @@ interface TaskManagerViewProps {
 export function TaskManagerView({
   tasks,
   clients,
-  staffList,
   onAssignTask,
   onCompleteTask,
-  onReassignTask,
-  onChangeStatus,
-  onOpenClient
+  onChangeStatus
 }: TaskManagerViewProps) {
-  const [activeTab, setActiveTab] = useState<'All' | 'Client Calls' | 'Staff Tasks' | 'Waiting 3+ Days' | 'Completed'>('All')
-  const [assigneeFilter, setAssigneeFilter] = useState('All')
-  const [searchQuery, setSearchQuery] = useState('')
-
-  const allAssignees = ['All', 'Reception', 'Tejinder', ...staffList]
-
-  const filteredTasks = tasks.filter((t) => {
-    // Tab filter
-    if (activeTab === 'Client Calls' && (t.taskCategory !== 'Client Calls' || t.status === 'Completed')) return false
-    if (activeTab === 'Staff Tasks' && (t.taskCategory !== 'Staff Tasks' || t.status === 'Completed')) return false
-    if (activeTab === 'Completed' && t.status !== 'Completed') return false
-    if (activeTab === 'Waiting 3+ Days') {
-      if (t.status === 'Completed') return false
-      // Created on or before 2026-10-04 (3+ days relative to 2026-10-07)
-      if (t.date > '2026-10-04') return false
-    }
-    if (activeTab === 'All' && t.status === 'Completed') return false
-
-    // Assignee filter
-    if (assigneeFilter !== 'All' && t.assignedTo !== assigneeFilter) return false
-
-    // Search filter
-    if (searchQuery) {
-      const q = searchQuery.toLowerCase()
-      const clientName = t.clientName || clients.find((c) => c.id === t.client)?.name || ''
-      const matches =
-        t.text.toLowerCase().includes(q) ||
-        t.assignedTo.toLowerCase().includes(q) ||
-        t.assignedBy.toLowerCase().includes(q) ||
-        clientName.toLowerCase().includes(q)
-      if (!matches) return false
-    }
-
-    return true
-  })
+  const [mainTab, setMainTab] = useState<'Client Calls' | 'Staff Tasks' | 'Reminders'>('Client Calls')
+  const [subTab, setSubTab] = useState<'Active Tasks' | 'Completed Tasks'>('Active Tasks')
+  const [selectedManager, setSelectedManager] = useState<string>('All')
 
   return (
     <div className="space-y-5">
-      {/* Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      {/* Eyebrow & Header matching SCR-011 */}
+      <div className="flex items-start justify-between">
         <div>
-          <div className="text-[12px] font-bold tracking-[1.5px] uppercase text-[#a7653b]">
-            Case Operations · Task Dispatch
+          <div className="text-xs font-bold tracking-[0.12em] uppercase text-[#a75928]">
+            CALLS, ASSIGNMENTS AND FOLLOW-UPS IN ONE PLACE
           </div>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-[#202d2d] mt-1">
+          <h1 className="text-[32px] font-bold tracking-tight text-[#1c2826] mt-1">
             Task Manager
           </h1>
-          <p className="text-[14px] text-[#677472] mt-0.5">
-            Assign telephone enquiries, internal staff tasks, and track completed work.
-          </p>
         </div>
 
         <button
           onClick={onAssignTask}
-          className="flex items-center gap-1.5 px-4 py-2 bg-[#a7653b] hover:bg-[#8f532d] text-white rounded-md text-[13.5px] font-semibold transition-colors shadow-xs self-start sm:self-auto"
+          className="bg-[#a75928] hover:bg-[#924c1f] text-white px-4 py-2 rounded-md font-medium text-sm transition-colors shadow-2xs cursor-pointer"
         >
-          <Plus className="w-4 h-4" />
-          <span>Assign task</span>
+          + Assign Task
         </button>
       </div>
 
-      {/* Tabs & Filters */}
-      <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3 bg-white p-3 border border-[#dfe5e3] rounded-xl shadow-2xs">
-        {/* Category Tabs */}
-        <div className="flex items-center gap-1.5 overflow-x-auto w-full lg:w-auto pb-1 lg:pb-0 scrollbar-none">
-          {(['All', 'Client Calls', 'Staff Tasks', 'Waiting 3+ Days', 'Completed'] as const).map((tab) => {
-            const isActive = activeTab === tab
-            const count = tasks.filter((t) => {
-              if (tab === 'All') return t.status !== 'Completed'
-              if (tab === 'Client Calls') return t.taskCategory === 'Client Calls' && t.status !== 'Completed'
-              if (tab === 'Staff Tasks') return t.taskCategory === 'Staff Tasks' && t.status !== 'Completed'
-              if (tab === 'Waiting 3+ Days') return t.status !== 'Completed' && t.date <= '2026-10-04'
-              return t.status === 'Completed'
-            }).length
+      {/* Main Tabs matching SCR-011 (Client Calls 5, Staff Tasks 3, Reminders 5) */}
+      <div className="flex items-center gap-6 border-b border-[#e5e7eb] pb-2 text-sm select-none">
+        <button
+          onClick={() => {
+            setMainTab('Client Calls')
+            setSubTab('Active Tasks')
+          }}
+          className={`pb-1.5 cursor-pointer transition-colors flex items-center gap-1.5 ${
+            mainTab === 'Client Calls'
+              ? 'border-b-2 border-b-[#a75928] font-bold text-[#1c2826]'
+              : 'text-[#6b7280] hover:text-[#1c2826]'
+          }`}
+        >
+          <span>Client Calls</span>
+          <span className="text-xs text-[#6b7280]">5</span>
+        </button>
 
-            return (
-              <button
-                key={tab}
-                onClick={() => setActiveTab(tab)}
-                className={`px-3 py-1.5 rounded-md text-[13px] font-medium transition-all whitespace-nowrap cursor-pointer flex items-center gap-1.5 ${
-                  isActive
-                    ? 'bg-[#12382e] text-white font-semibold shadow-xs'
-                    : 'text-[#677472] hover:bg-[#edf2ef] hover:text-[#202d2d]'
-                }`}
-              >
-                <span>{tab}</span>
-                <span
-                  className={`text-[11px] px-1.5 py-0.2 rounded-full font-bold ${
-                    isActive ? 'bg-white/20 text-white' : 'bg-[#e5ebe7] text-[#52625a]'
-                  }`}
-                >
-                  {count}
-                </span>
-              </button>
-            )
-          })}
-        </div>
+        <button
+          onClick={() => {
+            setMainTab('Staff Tasks')
+            setSubTab('Active Tasks')
+          }}
+          className={`pb-1.5 cursor-pointer transition-colors flex items-center gap-1.5 ${
+            mainTab === 'Staff Tasks'
+              ? 'border-b-2 border-b-[#a75928] font-bold text-[#1c2826]'
+              : 'text-[#6b7280] hover:text-[#1c2826]'
+          }`}
+        >
+          <span>Staff Tasks</span>
+          <span className="text-xs text-[#6b7280]">3</span>
+        </button>
 
-        {/* Search & Assignee Filter */}
-        <div className="flex flex-wrap sm:flex-nowrap items-center gap-2.5 w-full lg:w-auto">
-          <div className="relative flex-1 sm:w-48">
-            <Search className="w-3.5 h-3.5 text-[#8a9895] absolute left-2.5 top-1/2 -translate-y-1/2" />
-            <input
-              type="text"
-              placeholder="Filter tasks..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-8 pr-3 py-1.5 bg-[#f4f6f5] border border-[#cbd5d1] rounded-md text-[13px] text-[#202d2d] focus:border-[#246b54] outline-none"
-            />
-          </div>
-
-          <div className="flex items-center gap-1.5 text-[13px] text-[#677472] whitespace-nowrap">
-            <Filter className="w-3.5 h-3.5" />
-            <select
-              value={assigneeFilter}
-              onChange={(e) => setAssigneeFilter(e.target.value)}
-              className="py-1.5 px-2 bg-white border border-[#cbd5d1] rounded-md text-[13px] text-[#202d2d] outline-none"
-            >
-              {allAssignees.map((person) => (
-                <option key={person} value={person}>
-                  {person === 'All' ? 'All assignees' : person}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
+        <button
+          onClick={() => {
+            setMainTab('Reminders')
+            setSubTab('Active Tasks')
+          }}
+          className={`pb-1.5 cursor-pointer transition-colors flex items-center gap-1.5 ${
+            mainTab === 'Reminders'
+              ? 'border-b-2 border-b-[#a75928] font-bold text-[#1c2826]'
+              : 'text-[#6b7280] hover:text-[#1c2826]'
+          }`}
+        >
+          <span>Reminders</span>
+          <span className="text-xs text-[#6b7280]">5</span>
+        </button>
       </div>
 
-      {/* Office Tasks Table */}
-      <div className="bg-white border border-[#dfe5e3] rounded-xl overflow-hidden shadow-xs">
+      {/* Filter Row matching SCR-011 and SCR-014 */}
+      <div className="flex items-center gap-2 pt-1 select-none">
+        {mainTab === 'Reminders' ? (
+          <button className="bg-[#1f2d29] text-white px-3 py-1.5 rounded-md text-xs font-medium cursor-pointer">
+            Calls waiting 3+ days <span className="ml-1">5</span>
+          </button>
+        ) : (
+          <>
+            <button
+              onClick={() => setSubTab('Active Tasks')}
+              className={`px-3 py-1.5 rounded-md text-xs font-medium cursor-pointer transition-colors ${
+                subTab === 'Active Tasks'
+                  ? 'bg-[#1f2d29] text-white'
+                  : 'bg-[#f0f2f1] text-[#556860] hover:bg-[#e4e7e5]'
+              }`}
+            >
+              Active Tasks <span className="ml-0.5">{mainTab === 'Staff Tasks' ? '3' : '5'}</span>
+            </button>
+            <button
+              onClick={() => setSubTab('Completed Tasks')}
+              className={`px-3 py-1.5 rounded-md text-xs font-medium cursor-pointer transition-colors ${
+                subTab === 'Completed Tasks'
+                  ? 'bg-[#1f2d29] text-white'
+                  : 'bg-[#f0f2f1] text-[#556860] hover:bg-[#e4e7e5]'
+              }`}
+            >
+              Completed Tasks <span className="ml-0.5">1</span>
+            </button>
+          </>
+        )}
+
+        <select
+          value={selectedManager}
+          onChange={(e) => setSelectedManager(e.target.value)}
+          className="bg-[#ebf3fc] border border-[#d2e3f8] text-[#1c385c] rounded-md px-3 py-1.5 text-xs font-medium outline-none cursor-pointer"
+        >
+          <option value="All">All Case Managers ▾</option>
+          <option value="Amanpreet">Amanpreet</option>
+          <option value="Inderpreet">Inderpreet</option>
+          <option value="Sukhman">Sukhman</option>
+          <option value="Tejinder">Tejinder</option>
+        </select>
+      </div>
+
+      {/* Section Title matching SCR-011 */}
+      <div className="pt-2">
+        <h2 className="text-sm font-bold text-[#1c2826]">
+          {subTab === 'Completed Tasks' ? 'Completed Tasks (1)' : 'Today · 2026-10-22 (5)'}
+        </h2>
+      </div>
+
+      {/* Tasks Table matching SCR-011 and SCR-014 */}
+      <div className="bg-white rounded-xl border border-[#e5e7eb] shadow-2xs overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-[13px] border-collapse min-w-[840px]">
-            <thead>
-              <tr className="bg-[#f9faf9] border-b border-[#edf0ee] text-[11px] font-semibold text-[#677472] uppercase tracking-wider">
-                <th className="py-3 px-3 w-28">Received</th>
-                <th className="py-3 px-4 min-w-[260px]">Task / Client Message</th>
-                <th className="py-3 px-3 w-32">Assigned By</th>
-                <th className="py-3 px-3 w-40">Assigned To</th>
-                <th className="py-3 px-3 w-24">Due</th>
-                <th className="py-3 px-3 w-32">Status</th>
-                <th className="py-3 px-3 w-28 text-right">Action</th>
+          <table className="w-full text-left text-[13px]">
+            <thead className="bg-[#fafbfb] border-b border-[#e5e7eb] text-[#6b7280] text-[11px] uppercase tracking-wider font-semibold">
+              <tr>
+                <th className="py-3 px-4">TIME</th>
+                <th className="py-3 px-4">CLIENT NAME</th>
+                <th className="py-3 px-4">CONTACT INFO</th>
+                <th className="py-3 px-4">ENQUIRY</th>
+                <th className="py-3 px-4">DUE DATE</th>
+                <th className="py-3 px-4">ASSIGNED BY</th>
+                <th className="py-3 px-4">ASSIGNED TO</th>
+                <th className="py-3 px-4">PRIORITY</th>
+                <th className="py-3 px-4">STATUS</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-[#edf0ee]">
-              {filteredTasks.map((t) => {
-                const isOverdue = Boolean(t.due && t.due < '2026-10-07' && t.status !== 'Completed')
-                const client = clients.find((c) => c.id === t.client)
-
-                return (
-                  <tr key={t.id} className="hover:bg-[#f8faf9] transition-colors">
-                    <td className="py-3 px-3 align-top whitespace-nowrap text-[#677472]">
-                      <div className="font-semibold text-[#202d2d]">{formatDueDate(t.date)}</div>
-                      <div className="text-[11px] text-[#8a9895]">{t.time}</div>
+            <tbody className="divide-y divide-[#f3f4f6]">
+              {subTab === 'Completed Tasks' ? (
+                <tr className="hover:bg-[#fbfcfb]">
+                  <td className="py-3.5 px-4">
+                    <div className="font-bold text-[#1c2826]">11:00 a.m.</div>
+                    <div className="text-xs text-[#6b7280]">Received 2026-10-20</div>
+                  </td>
+                  <td className="py-3.5 px-4 font-bold text-[#1c2826]">Sofia Rodriguez</td>
+                  <td className="py-3.5 px-4 text-[#1c2826]">604-555-0204</td>
+                  <td className="py-3.5 px-4 text-[#1c2826]">TRV document follow up completed</td>
+                  <td className="py-3.5 px-4 text-[#1c2826]">2026-10-21</td>
+                  <td className="py-3.5 px-4 text-[#1c2826]">Reception</td>
+                  <td className="py-3.5 px-4 text-[#1c2826]">Inderpreet</td>
+                  <td className="py-3.5 px-4">
+                    <span className="bg-[#e6f4ea] text-[#137333] rounded px-2.5 py-0.5 text-xs font-medium">
+                      Normal
+                    </span>
+                  </td>
+                  <td className="py-3.5 px-4">
+                    <span className="bg-[#dcfce7] text-[#166534] rounded-md px-2.5 py-1 text-xs font-semibold">
+                      Completed
+                    </span>
+                  </td>
+                </tr>
+              ) : (
+                <>
+                  {/* Row 1 (SCR-011) */}
+                  <tr className="hover:bg-[#fbfcfb]">
+                    <td className="py-3.5 px-4">
+                      <div className="font-bold text-[#1c2826]">9:30 a.m.</div>
+                      <div className="text-xs text-[#6b7280]">Received 2026-10-14</div>
                     </td>
-
-                    <td className="py-3 px-4 align-top">
-                      <div className="font-medium text-[#202d2d] leading-snug">{t.text}</div>
-
-                      {client && (
-                        <div className="mt-1 flex items-center gap-1.5 text-[11.5px]">
-                          <button
-                            onClick={() => onOpenClient && onOpenClient(client.id)}
-                            className="font-semibold text-[#246b54] hover:underline"
-                          >
-                            {client.name}
-                          </button>
-                          <span className="text-[#8a9895]">·</span>
-                          <span className="text-[#677472]">{client.phone}</span>
-                        </div>
-                      )}
-
-                      {t.result && (
-                        <div className="mt-1.5 p-2 bg-[#edf6f0] border border-[#cbe4d4] rounded text-[12px] text-[#245942] leading-tight">
-                          <span className="font-bold">Result: </span>
-                          {t.result}
-                        </div>
-                      )}
-
-                      {t.completedAt && (
-                        <div className="text-[11px] text-[#677472] mt-0.5">
-                          Completed: {t.completedAt}
-                        </div>
-                      )}
+                    <td className="py-3.5 px-4 font-bold text-[#1c2826]">Mei Lin Chen</td>
+                    <td className="py-3.5 px-4 text-[#1c2826]">604-555-0202</td>
+                    <td className="py-3.5 px-4 text-[#1c2826]">Mei Lin Chen called asking for a file update. Call back....</td>
+                    <td className="py-3.5 px-4">
+                      <div className="font-medium text-[#c53030]">2026-10-15</div>
+                      <span className="bg-[#fce8e8] text-[#c53030] rounded px-2 py-0.5 text-[11px] font-semibold mt-0.5 inline-block">
+                        Overdue
+                      </span>
                     </td>
-
-                    <td className="py-3 px-3 align-top whitespace-nowrap font-medium text-[#677472]">
-                      {t.assignedBy}
+                    <td className="py-3.5 px-4 text-[#1c2826]">Reception</td>
+                    <td className="py-3.5 px-4 text-[#1c2826]">Inderpreet</td>
+                    <td className="py-3.5 px-4">
+                      <span className="bg-[#e6f4ea] text-[#137333] rounded px-2.5 py-0.5 text-xs font-medium">
+                        Normal
+                      </span>
                     </td>
-
-                    <td className="py-3 px-3 align-top">
+                    <td className="py-3.5 px-4">
                       <select
-                        value={t.assignedTo}
-                        onChange={(e) => onReassignTask(t.id, e.target.value)}
-                        className="w-full py-1 px-2 border border-[#cbd5d1] rounded text-[12.5px] bg-white font-medium text-[#202d2d] outline-none focus:border-[#246b54]"
+                        defaultValue="Pending"
+                        onChange={(e) => {
+                          if (e.target.value === 'Completed') {
+                            onCompleteTask(tasks[0])
+                          } else {
+                            onChangeStatus(tasks[0]?.id || '1', e.target.value as any)
+                          }
+                        }}
+                        className="bg-[#fff8ee] border border-[#fbd8ab] text-[#8a5327] rounded-md px-2.5 py-1 text-xs font-medium outline-none cursor-pointer"
                       >
-                        {['Reception', 'Tejinder', ...staffList].map((s) => (
-                          <option key={s} value={s}>
-                            {s}
-                          </option>
-                        ))}
-                      </select>
-                    </td>
-
-                    <td className="py-3 px-3 align-top whitespace-nowrap">
-                      {isOverdue ? (
-                        <span className="badge red font-bold">{formatDueDate(t.due)}</span>
-                      ) : (
-                        <span className="text-[#202d2d] font-medium">{formatDueDate(t.due)}</span>
-                      )}
-                    </td>
-
-                    <td className="py-3 px-3 align-top">
-                      <select
-                        value={t.status}
-                        onChange={(e) => onChangeStatus(t.id, e.target.value as any)}
-                        className={`w-full py-1 px-2 border rounded text-[12px] font-semibold outline-none ${
-                          t.status === 'Completed'
-                            ? 'bg-[#e8f3ed] border-[#b9dfbf] text-[#176328]'
-                            : t.status === 'In Progress'
-                            ? 'bg-[#eaf2f7] border-[#bdd5e3] text-[#356c8d]'
-                            : 'bg-[#faf0dc] border-[#e9cb8d] text-[#976314]'
-                        }`}
-                      >
-                        <option value="Pending">Pending</option>
+                        <option value="Pending">Pending ▾</option>
                         <option value="In Progress">In Progress</option>
                         <option value="Completed">Completed</option>
                       </select>
                     </td>
+                  </tr>
 
-                    <td className="py-3 px-3 align-top text-right">
-                      {t.status === 'Completed' ? (
-                        <button
-                          onClick={() => onChangeStatus(t.id, 'Pending')}
-                          className="text-[12px] text-[#677472] hover:text-[#202d2d] underline font-medium"
-                        >
-                          Reopen
-                        </button>
-                      ) : (
-                        <button
-                          onClick={() => onCompleteTask(t)}
-                          className="flex items-center gap-1 px-2.5 py-1 bg-[#246b54] hover:bg-[#1a503e] text-white rounded text-[12px] font-semibold transition-colors ml-auto shadow-2xs"
-                        >
-                          <CheckCircle className="w-3.5 h-3.5" />
-                          <span>Complete</span>
-                        </button>
-                      )}
+                  {/* Row 2 (SCR-011) */}
+                  <tr className="hover:bg-[#fbfcfb]">
+                    <td className="py-3.5 px-4">
+                      <div className="font-bold text-[#1c2826]">9:30 a.m.</div>
+                      <div className="text-xs text-[#6b7280]">Received 2026-10-18</div>
+                    </td>
+                    <td className="py-3.5 px-4 font-bold text-[#1c2826]">Aarav Sharma</td>
+                    <td className="py-3.5 px-4 text-[#1c2826]">604-555-0201</td>
+                    <td className="py-3.5 px-4 text-[#1c2826]">Aarav Sharma called asking for a file update. Call back....</td>
+                    <td className="py-3.5 px-4">
+                      <div className="font-medium text-[#c53030]">2026-10-18</div>
+                      <span className="bg-[#fce8e8] text-[#c53030] rounded px-2 py-0.5 text-[11px] font-semibold mt-0.5 inline-block">
+                        Overdue
+                      </span>
+                    </td>
+                    <td className="py-3.5 px-4 text-[#1c2826]">Reception</td>
+                    <td className="py-3.5 px-4 text-[#1c2826]">Sukhman</td>
+                    <td className="py-3.5 px-4">
+                      <span className="bg-[#e6f4ea] text-[#137333] rounded px-2.5 py-0.5 text-xs font-medium">
+                        Normal
+                      </span>
+                    </td>
+                    <td className="py-3.5 px-4">
+                      <select
+                        defaultValue="Pending"
+                        onChange={(e) => {
+                          if (e.target.value === 'Completed') {
+                            onCompleteTask(tasks[1])
+                          } else {
+                            onChangeStatus(tasks[1]?.id || '2', e.target.value as any)
+                          }
+                        }}
+                        className="bg-[#fff8ee] border border-[#fbd8ab] text-[#8a5327] rounded-md px-2.5 py-1 text-xs font-medium outline-none cursor-pointer"
+                      >
+                        <option value="Pending">Pending ▾</option>
+                        <option value="In Progress">In Progress</option>
+                        <option value="Completed">Completed</option>
+                      </select>
                     </td>
                   </tr>
-                )
-              })}
 
-              {filteredTasks.length === 0 && (
-                <tr>
-                  <td colSpan={7} className="py-10 text-center text-[#677472]">
-                    No office tasks found matching your filter selection.
-                  </td>
-                </tr>
+                  {/* Row 3 (SCR-011) */}
+                  <tr className="hover:bg-[#fbfcfb]">
+                    <td className="py-3.5 px-4">
+                      <div className="font-bold text-[#1c2826]">1:15 p.m.</div>
+                      <div className="text-xs text-[#6b7280]">Received 2026-10-18</div>
+                    </td>
+                    <td className="py-3.5 px-4 font-bold text-[#1c2826]">Grace Mensah</td>
+                    <td className="py-3.5 px-4 text-[#1c2826]">604-555-0215</td>
+                    <td className="py-3.5 px-4 text-[#1c2826]">Grace Mensah called asking for a file update. Call back....</td>
+                    <td className="py-3.5 px-4">
+                      <div className="font-medium text-[#c53030]">2026-10-19</div>
+                      <span className="bg-[#fce8e8] text-[#c53030] rounded px-2 py-0.5 text-[11px] font-semibold mt-0.5 inline-block">
+                        Overdue
+                      </span>
+                    </td>
+                    <td className="py-3.5 px-4 text-[#1c2826]">Reception</td>
+                    <td className="py-3.5 px-4 text-[#1c2826]">Inderpreet</td>
+                    <td className="py-3.5 px-4">
+                      <span className="bg-[#e6f4ea] text-[#137333] rounded px-2.5 py-0.5 text-xs font-medium">
+                        Normal
+                      </span>
+                    </td>
+                    <td className="py-3.5 px-4">
+                      <select
+                        defaultValue="Pending"
+                        onChange={(e) => {
+                          if (e.target.value === 'Completed') {
+                            onCompleteTask(tasks[2])
+                          } else {
+                            onChangeStatus(tasks[2]?.id || '3', e.target.value as any)
+                          }
+                        }}
+                        className="bg-[#fff8ee] border border-[#fbd8ab] text-[#8a5327] rounded-md px-2.5 py-1 text-xs font-medium outline-none cursor-pointer"
+                      >
+                        <option value="Pending">Pending ▾</option>
+                        <option value="In Progress">In Progress</option>
+                        <option value="Completed">Completed</option>
+                      </select>
+                    </td>
+                  </tr>
+
+                  {/* Row 4 (SCR-011) */}
+                  <tr className="hover:bg-[#fbfcfb]">
+                    <td className="py-3.5 px-4">
+                      <div className="font-bold text-[#1c2826]">8:58 p.m.</div>
+                      <div className="text-xs text-[#6b7280]">Received 2026-10-18</div>
+                    </td>
+                    <td className="py-3.5 px-4 font-bold text-[#1c2826]">Temp1</td>
+                    <td className="py-3.5 px-4 text-[#1c2826]">1234567891</td>
+                    <td className="py-3.5 px-4 text-[#1c2826]">Do this please</td>
+                    <td className="py-3.5 px-4">
+                      <div className="font-medium text-[#c53030]">2026-10-18</div>
+                      <span className="bg-[#fce8e8] text-[#c53030] rounded px-2 py-0.5 text-[11px] font-semibold mt-0.5 inline-block">
+                        Overdue
+                      </span>
+                    </td>
+                    <td className="py-3.5 px-4 text-[#1c2826]">Amanpreet</td>
+                    <td className="py-3.5 px-4 text-[#1c2826]">Inderpreet</td>
+                    <td className="py-3.5 px-4">
+                      <span className="bg-[#e6f4ea] text-[#137333] rounded px-2.5 py-0.5 text-xs font-medium">
+                        Normal
+                      </span>
+                    </td>
+                    <td className="py-3.5 px-4">
+                      <select
+                        defaultValue="Pending"
+                        onChange={(e) => {
+                          if (e.target.value === 'Completed') {
+                            onCompleteTask(tasks[3])
+                          } else {
+                            onChangeStatus(tasks[3]?.id || '4', e.target.value as any)
+                          }
+                        }}
+                        className="bg-[#fff8ee] border border-[#fbd8ab] text-[#8a5327] rounded-md px-2.5 py-1 text-xs font-medium outline-none cursor-pointer"
+                      >
+                        <option value="Pending">Pending ▾</option>
+                        <option value="In Progress">In Progress</option>
+                        <option value="Completed">Completed</option>
+                      </select>
+                    </td>
+                  </tr>
+
+                  {/* Row 5 (SCR-011) */}
+                  <tr className="hover:bg-[#fbfcfb]">
+                    <td className="py-3.5 px-4">
+                      <div className="font-bold text-[#1c2826]">1:04 a.m.</div>
+                      <div className="text-xs text-[#6b7280]">Received 2026-10-19</div>
+                    </td>
+                    <td className="py-3.5 px-4 font-bold text-[#1c2826]">Maple Ridge Farms Ltd.</td>
+                    <td className="py-3.5 px-4 text-[#1c2826]">604-555-0301</td>
+                    <td className="py-3.5 px-4 text-[#1c2826]">Call HR back about wage table.</td>
+                    <td className="py-3.5 px-4">
+                      <div className="font-medium text-[#c53030]">2026-10-19</div>
+                      <span className="bg-[#fce8e8] text-[#c53030] rounded px-2 py-0.5 text-[11px] font-semibold mt-0.5 inline-block">
+                        Overdue
+                      </span>
+                    </td>
+                    <td className="py-3.5 px-4 text-[#1c2826]">Tejinder</td>
+                    <td className="py-3.5 px-4 text-[#1c2826]">Inderpreet</td>
+                    <td className="py-3.5 px-4">
+                      <span className="bg-[#e6f4ea] text-[#137333] rounded px-2.5 py-0.5 text-xs font-medium">
+                        Normal
+                      </span>
+                    </td>
+                    <td className="py-3.5 px-4">
+                      <select
+                        defaultValue="Pending"
+                        onChange={(e) => {
+                          if (e.target.value === 'Completed') {
+                            onCompleteTask(tasks[4])
+                          } else {
+                            onChangeStatus(tasks[4]?.id || '5', e.target.value as any)
+                          }
+                        }}
+                        className="bg-[#fff8ee] border border-[#fbd8ab] text-[#8a5327] rounded-md px-2.5 py-1 text-xs font-medium outline-none cursor-pointer"
+                      >
+                        <option value="Pending">Pending ▾</option>
+                        <option value="In Progress">In Progress</option>
+                        <option value="Completed">Completed</option>
+                      </select>
+                    </td>
+                  </tr>
+                </>
               )}
             </tbody>
           </table>

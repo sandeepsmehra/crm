@@ -1,989 +1,745 @@
 import React, { useState } from 'react'
 import { Matter, Client } from '@/types/crm'
-import { MATTER_STAGES } from '@/data/mockData'
-import { formatDueDate, getHealthStatus } from '@/lib/crmUtils'
-import { 
-  ArrowLeft, 
-  Clock, 
-  Eye 
-} from 'lucide-react'
+import { APPLICATION_TYPES, STAFF_MEMBERS } from '@/data/mockData'
+import { toast } from '@/components/ui/sonner'
 
 interface MatterDetailViewProps {
   matter: Matter
   client?: Client
   onBack: () => void
   onUpdateMatter: (updated: Matter) => void
-  onEditAssignment: () => void
-  onRecordSubmission: () => void
-  onRecordContact: () => void
-  onAddDeadline: () => void
-  onAddGovtRequest: () => void
-  onPreviewClientPortal: (matterId: string) => void
+  onEditAssignment?: () => void
+  onRecordSubmission?: () => void
+  onRecordContact?: () => void
+  onAddDeadline?: () => void
+  onAddGovtRequest?: () => void
+  onPreviewClientPortal?: (matterId: string) => void
+}
+
+type MatterTab =
+  | 'Application Details'
+  | 'Client Information'
+  | 'Reminders'
+  | 'Case Work & Notes'
+  | 'Documents Received / Verified'
+
+interface DocRow {
+  id: string
+  name: string
+  receivedDate: string
+  reviewDue: string
+  status: string
+  verifiedBy: string
+  notes: string
 }
 
 export function MatterDetailView({
   matter,
   client,
   onBack,
-  onUpdateMatter,
-  onEditAssignment,
-  onRecordSubmission,
-  onRecordContact,
-  onAddDeadline,
-  onAddGovtRequest,
-  onPreviewClientPortal
+  onUpdateMatter
 }: MatterDetailViewProps) {
-  const [activeTab, setActiveTab] = useState<
-    'Overview' | 'Strategy' | 'Checklist & Documents' | 'Case Work' | 'Communication & Notes' | 'Timeline'
-  >('Overview')
-  const [communicationSection, setCommunicationSection] = useState<'Last Contact' | 'Notes & Messages'>('Last Contact')
+  const [activeTab, setActiveTab] = useState<MatterTab>('Application Details')
 
-  // Form states
-  const [strategyText, setStrategyText] = useState(matter.strategy)
-  const [riskText, setRiskText] = useState(matter.risk)
-  const [newNoteText, setNewNoteText] = useState('')
-  const [newNoteType, setNewNoteType] = useState('Internal Note')
-  const [demoMessageText, setDemoMessageText] = useState('')
-  const [correctionLines, setCorrectionLines] = useState('')
+  // Application Details fields (SCR-040, SCR-041)
+  const [appType, setAppType] = useState(matter.type || 'Spousal Sponsorship')
+  const [customAppType, setCustomAppType] = useState('')
+  const [caseManager, setCaseManager] = useState(matter.owner || 'Unassigned')
+  const [caseOverview, setCaseOverview] = useState(matter.overview || '')
+  const [extraNotes, setExtraNotes] = useState(matter.strategy || '')
+  const [hasDependants, setHasDependants] = useState('No')
+  const [itaDate, setItaDate] = useState('')
+  const [deadlineSubmit, setDeadlineSubmit] = useState(matter.due || '')
+  const [prNotes, setPrNotes] = useState('')
 
-  const health = getHealthStatus(matter)
+  // Client Information fields (SCR-042)
+  const [clientName, setClientName] = useState(client?.name || 'Mei Lin Chen')
+  const [clientPhone, setClientPhone] = useState(client?.phone || '604-555-0202')
+  const [clientEmail, setClientEmail] = useState(client?.email || 'mei.lin.chen@example.test')
+  const [clientDob, setClientDob] = useState(client?.dob || '1971-02-11')
+  const [clientAddress, setClientAddress] = useState(client?.address || '101 Example Street, Surrey, BC')
+  const [clientUci, setClientUci] = useState(client?.uci || 'DEMO-20001')
+  const [immigrationStatus, setImmigrationStatus] = useState(client?.status || 'Worker')
+  const [statusExpiry, setStatusExpiry] = useState(client?.expiry || '2027-01-01')
+  const [emergencyName, setEmergencyName] = useState('')
+  const [emergencyRelation, setEmergencyRelation] = useState('')
 
-  // Save Strategy
-  const handleSaveStrategy = () => {
-    onUpdateMatter({
-      ...matter,
-      strategy: strategyText,
-      risk: riskText,
-      events: ['Case strategy and risk flags updated', ...matter.events]
-    })
-  }
+  // Case Work & Notes fields (SCR-044)
+  const [newNote, setNewNote] = useState('')
+  const [savedNotes, setSavedNotes] = useState<Array<{ id: string; text: string; time: string }>>([])
 
-  // Document actions
-  const handleSimulateUpload = (index: number) => {
-    const updatedDocs = [...matter.docs]
-    const doc = updatedDocs[index]
-    const nextVer = doc.version + 1
-    updatedDocs[index] = {
-      ...doc,
-      version: nextVer,
-      status: 'Uploaded — Review Required',
-      history: [`v${nextVer} — Uploaded in demo session`, ...doc.history]
+  // Documents fields (SCR-045)
+  const [docRows, setDocRows] = useState<DocRow[]>([
+    {
+      id: 'd-1',
+      name: 'PCC',
+      receivedDate: '',
+      reviewDue: '',
+      status: 'Not received',
+      verifiedBy: '',
+      notes: ''
+    },
+    {
+      id: 'd-2',
+      name: 'IELTS',
+      receivedDate: '',
+      reviewDue: '',
+      status: 'Not received',
+      verifiedBy: '',
+      notes: ''
+    },
+    {
+      id: 'd-3',
+      name: 'Experience Letters',
+      receivedDate: '',
+      reviewDue: '',
+      status: 'Not received',
+      verifiedBy: '',
+      notes: ''
     }
-    onUpdateMatter({
-      ...matter,
-      docs: updatedDocs,
-      events: [`Document uploaded: ${doc.name} (v${nextVer})`, ...matter.events]
-    })
-  }
+  ])
 
-  const handleDocStatusChange = (index: number, newStatus: any) => {
-    if (!newStatus) return
-    const updatedDocs = [...matter.docs]
-    const doc = updatedDocs[index]
-    updatedDocs[index] = {
-      ...doc,
-      status: newStatus,
-      history: [`v${doc.version || 1} — ${newStatus} by ${matter.owner}`, ...doc.history]
+  const handleSaveNote = () => {
+    if (!newNote.trim()) return
+    const noteEntry = {
+      id: `n-${Date.now()}`,
+      text: newNote.trim(),
+      time: new Date().toLocaleString()
     }
-    onUpdateMatter({
-      ...matter,
-      docs: updatedDocs,
-      events: [`Document status updated: ${doc.name} -> ${newStatus}`, ...matter.events]
-    })
+    setSavedNotes([noteEntry, ...savedNotes])
+    setNewNote('')
+    toast.success('Note saved with timestamp')
   }
 
-  const handleMarkDocumentsComplete = () => {
-    onUpdateMatter({
-      ...matter,
-      stage: 2,
-      ball: 'Case Manager',
-      next: 'Prepare forms and application package',
-      events: [`Document collection complete; preparation assigned to ${matter.owner}`, ...matter.events]
-    })
-  }
-
-  // Task checklist actions
-  const handleToggleTask = (taskIndex: number, done: boolean) => {
-    const updatedTasks = [...matter.tasks]
-    updatedTasks[taskIndex] = { ...updatedTasks[taskIndex], done }
-    onUpdateMatter({
-      ...matter,
-      tasks: updatedTasks,
-      events: [`Task ${done ? 'completed' : 'reopened'}: ${updatedTasks[taskIndex].name}`, ...matter.events]
-    })
-  }
-
-  const handleFormStatusChange = (formIndex: number, status: 'Not Started' | 'In Progress' | 'Complete') => {
-    const updatedForms = [...matter.forms]
-    updatedForms[formIndex] = { ...updatedForms[formIndex], status }
-    onUpdateMatter({
-      ...matter,
-      forms: updatedForms,
-      events: [`Form updated: ${updatedForms[formIndex].name} -> ${status}`, ...matter.events]
-    })
-  }
-
-  const handleSendForReview = () => {
-    onUpdateMatter({
-      ...matter,
-      stage: 3,
-      ball: 'RCIC',
-      next: 'Review application and evidence',
-      events: ['Application package sent to Tejinder for RCIC review', ...matter.events]
-    })
-  }
-
-  const handleReturnCorrections = () => {
-    const lines = correctionLines.split('\n').map((s) => s.trim()).filter(Boolean)
-    if (!lines.length) return
-    const newTasks = lines.map((name) => ({ name: `Correction: ${name}`, done: false, owner: matter.owner, due: matter.due }))
-    onUpdateMatter({
-      ...matter,
-      tasks: [...matter.tasks, ...newTasks],
-      corrections: [...matter.corrections, ...lines],
-      stage: 2,
-      ball: 'Case Manager',
-      next: 'Complete RCIC corrections',
-      events: [`Returned for changes by RCIC: ${lines.join('; ')}`, ...matter.events]
-    })
-    setCorrectionLines('')
-  }
-
-  const handleApproveFinalPreparation = () => {
-    onUpdateMatter({
-      ...matter,
-      stage: 4,
-      ball: 'Case Manager',
-      next: 'Collect signatures and finalize package',
-      events: ['RCIC approved final preparation package', ...matter.events]
-    })
-  }
-
-  const handleToggleFinalCheck = (key: string) => {
-    const checks = { ...(matter.finalChecks || {}) }
-    checks[key] = !checks[key]
-    onUpdateMatter({
-      ...matter,
-      finalChecks: checks,
-      ready: Object.values(checks).length >= 4 && Object.values(checks).every(Boolean)
-    })
-  }
-
-  const handleAddNote = () => {
-    if (!newNoteText.trim()) return
-    const newEntry = {
-      type: newNoteType,
-      text: newNoteText.trim(),
-      date: '2026-10-07'
+  const handleAddDocumentRow = () => {
+    const newDoc: DocRow = {
+      id: `d-${Date.now()}`,
+      name: 'Passport',
+      receivedDate: '',
+      reviewDue: '',
+      status: 'Not received',
+      verifiedBy: '',
+      notes: ''
     }
-    onUpdateMatter({
-      ...matter,
-      notes: [newEntry, ...matter.notes],
-      events: [`Note added (${newNoteType}): ${newNoteText.slice(0, 30)}...`, ...matter.events]
-    })
-    setNewNoteText('')
+    setDocRows([...docRows, newDoc])
+    toast.success('Added document requirement')
   }
 
-  const handleSendPortalMessage = () => {
-    if (!demoMessageText.trim()) return
-    const newMsg = {
-      from: 'Staff',
-      text: demoMessageText.trim()
+  const handleUpdateDoc = (id: string, field: keyof DocRow, value: string) => {
+    setDocRows((prev) =>
+      prev.map((d) => (d.id === id ? { ...d, [field]: value } : d))
+    )
+  }
+
+  const handleDeleteApplication = () => {
+    if (confirm('Are you sure you want to delete this application?')) {
+      toast.success('Application deleted')
+      onBack()
     }
-    onUpdateMatter({
-      ...matter,
-      messages: [...(matter.messages || []), newMsg],
-      events: [`Client portal message sent`, ...matter.events]
-    })
-    setDemoMessageText('')
   }
 
-  const allDocsApproved = matter.docs.every((d) => ['Approved', 'Not Applicable'].includes(d.status))
-  const allTasksDone = matter.tasks.every((t) => t.done)
-  const allFormsComplete = matter.forms.every((f) => f.status === 'Complete')
+  const handleCloseFile = () => {
+    toast.info('File marked as Closed — Not Proceeding')
+    onBack()
+  }
+
+  const handleMoveToPR = () => {
+    toast.success('Application moved to PR Applications')
+    onBack()
+  }
 
   return (
-    <div className="space-y-5">
-      {/* Back button & top bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+    <div className="space-y-4 pb-20">
+      {/* Breadcrumb & Title (SCR-040) */}
+      <div>
+        <div className="text-xs text-[#6b7280]">
+          <span className="hover:underline cursor-pointer" onClick={onBack}>
+            To-Do List
+          </span>{' '}
+          / Retained Clients
+        </div>
+        <h1 className="text-[32px] font-bold tracking-tight text-[#111827] mt-1">
+          Application
+        </h1>
+      </div>
+
+      {/* Client Info Card Banner (SCR-040) */}
+      <div className="bg-[#e9f2ec] border border-[#d2e3d7] rounded-xl p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <div className="flex items-center gap-6">
+            <h2 className="text-2xl font-bold text-[#111827]">{clientName}</h2>
+            <span className="text-xs text-[#166534] font-medium">From client profile</span>
+          </div>
+          <div className="text-xs text-[#374151] mt-1">
+            {clientPhone} · {clientEmail}
+          </div>
+        </div>
+
         <button
           onClick={onBack}
-          className="flex items-center gap-1.5 text-[13px] font-semibold text-[#677472] hover:text-[#12382e] transition-colors self-start cursor-pointer"
+          className="bg-white hover:bg-[#f9fafb] border border-[#d1d5db] text-[#111827] rounded-lg px-5 py-2 text-sm font-medium transition-colors shadow-2xs self-start sm:self-auto cursor-pointer"
         >
-          <ArrowLeft className="w-4 h-4" />
-          <span>Back to To-Do List</span>
+          View Client Profile
         </button>
-
-        <div className="flex flex-wrap items-center gap-2">
-          <span className={`badge ${health.colorClass}`}>{health.label}</span>
-          <button
-            onClick={onEditAssignment}
-            className="px-3 py-1.5 bg-white border border-[#cbd5d1] rounded-md text-[12.5px] font-semibold text-[#202d2d] hover:bg-[#f4f6f5] transition-colors shadow-2xs"
-          >
-            Edit assignment
-          </button>
-          <button
-            onClick={() => onPreviewClientPortal(matter.id)}
-            className="flex items-center gap-1 px-3 py-1.5 bg-[#12382e] text-white rounded-md text-[12.5px] font-semibold hover:bg-[#1a503e] transition-colors shadow-xs"
-          >
-            <Eye className="w-3.5 h-3.5" />
-            <span>Client preview</span>
-          </button>
-        </div>
       </div>
 
-      {/* Title & Eyebrow */}
-      <div>
-        <div className="text-[12px] font-bold tracking-[1.5px] uppercase text-[#a7653b]">
-          {matter.id} · {matter.type}
-        </div>
-        <h1 className="text-3xl font-bold tracking-tight text-[#202d2d] mt-0.5">
-          {matter.name}
-        </h1>
-        {client && (
-          <div className="text-[13px] text-[#677472] mt-0.5">
-            {client.phone} · {client.email} · {client.address || 'Surrey, BC'}
-          </div>
-        )}
+      {/* Matter Subtitle */}
+      <div className="text-xs text-[#6b7280]">
+        {matter.id || 'NR-demo-02'} · Retained
       </div>
 
-      {/* Summary Dark Green Banner */}
-      <div className="case-summary-banner">
-        <div>
-          <small>Current stage</small>
-          <strong>{MATTER_STAGES[matter.stage]}</strong>
-        </div>
-        <div>
-          <small>Who has the ball?</small>
-          <strong className="text-[#d5a17e]">{matter.ball}</strong>
-        </div>
-        <div>
-          <small>Next action</small>
-          <strong className="truncate block" title={matter.next}>{matter.next}</strong>
-        </div>
-        <div>
-          <small>Next action due / owner</small>
-          <strong>{formatDueDate(matter.due)} · {matter.owner}</strong>
-          {matter.hard && (
-            <div className="mt-1">
-              <span className="badge red text-[10.5px]">Hard: {formatDueDate(matter.hard)}</span>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Stepper */}
-      <div className="stepper">
-        {MATTER_STAGES.map((s, idx) => {
-          const isDone = idx < matter.stage
-          const isCurrent = idx === matter.stage
+      {/* Pill Tabs (SCR-040) */}
+      <div className="flex flex-wrap items-center gap-2 select-none pt-1">
+        {(
+          [
+            'Application Details',
+            'Client Information',
+            'Reminders',
+            'Case Work & Notes',
+            'Documents Received / Verified'
+          ] as MatterTab[]
+        ).map((t) => {
+          const isActive = activeTab === t
           return (
-            <div
-              key={s}
-              className={`step ${isDone ? 'done' : isCurrent ? 'current' : ''}`}
-            >
-              {s}
-            </div>
-          )
-        })}
-      </div>
-
-      {/* Tabs */}
-      <div className="flex items-center gap-1 border-b border-[#dfe5e3] overflow-x-auto scrollbar-none pb-0.5">
-        {(['Overview', 'Strategy', 'Checklist & Documents', 'Case Work', 'Communication & Notes', 'Timeline'] as const).map(
-          (t) => (
             <button
               key={t}
               onClick={() => setActiveTab(t)}
-              className={`px-4 py-2.5 text-[13.5px] font-semibold border-b-2 transition-all whitespace-nowrap cursor-pointer ${
-                activeTab === t
-                  ? 'border-[#a7653b] text-[#a7653b]'
-                  : 'border-transparent text-[#677472] hover:text-[#202d2d]'
+              className={`px-4 py-2 rounded-md text-sm font-medium transition-colors cursor-pointer ${
+                isActive
+                  ? 'bg-[#1f382f] text-white'
+                  : 'bg-white border border-[#d1d5db] text-[#374151] hover:bg-[#f9fafb]'
               }`}
             >
               {t}
             </button>
           )
-        )}
+        })}
       </div>
 
-      {/* TAB 1: OVERVIEW */}
-      {activeTab === 'Overview' && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <div className="space-y-6">
-            {/* Next Step Card */}
-            <div className="bg-white border border-[#dfe5e3] rounded-xl p-5 shadow-xs">
-              <h2 className="text-[17px] font-bold text-[#202d2d] mb-1">What happens next?</h2>
-              <p className="text-xl font-bold text-[#12382e] my-3 leading-snug">
-                {matter.next}
-              </p>
+      {/* ======================================================== */}
+      {/* TAB 1: APPLICATION DETAILS (SCR-040, SCR-041)           */}
+      {/* ======================================================== */}
+      {activeTab === 'Application Details' && (
+        <div className="space-y-4">
+          {/* Main Card */}
+          <div className="bg-white rounded-xl border border-[#e5e7eb] shadow-2xs p-6 space-y-5">
+            <h2 className="text-base font-bold text-[#111827]">Application Details</h2>
 
-              <div className="flex flex-wrap items-center gap-2.5 mt-4">
-                {matter.stage < 2 && (
-                  <button
-                    onClick={() => setActiveTab('Checklist & Documents')}
-                    className="px-4 py-2 bg-[#202d2d] text-white rounded-md text-[13px] font-semibold hover:bg-black transition-colors"
-                  >
-                    Open checklist & documents
-                  </button>
-                )}
-                {matter.stage === 2 && (
-                  <button
-                    onClick={() => setActiveTab('Case Work')}
-                    className="px-4 py-2 bg-[#202d2d] text-white rounded-md text-[13px] font-semibold hover:bg-black transition-colors"
-                  >
-                    Continue preparation case work
-                  </button>
-                )}
-                {matter.stage === 3 && (
-                  <button
-                    onClick={() => setActiveTab('Case Work')}
-                    className="px-4 py-2 bg-[#7359a6] text-white rounded-md text-[13px] font-semibold hover:bg-[#5f468d] transition-colors"
-                  >
-                    Review file (RCIC queue)
-                  </button>
-                )}
-                {matter.stage === 4 && (
-                  <button
-                    onClick={() => setActiveTab('Case Work')}
-                    className="px-4 py-2 bg-[#246b54] text-white rounded-md text-[13px] font-semibold hover:bg-[#1a503e] transition-colors"
-                  >
-                    Final preparation & submission
-                  </button>
-                )}
-                {matter.stage === 5 && (
-                  <button
-                    onClick={onAddGovtRequest}
-                    className="px-4 py-2 bg-[#a7653b] text-white rounded-md text-[13px] font-semibold hover:bg-[#8f532d] transition-colors"
-                  >
-                    Add government request / PFL
-                  </button>
-                )}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              <div>
+                <label className="block text-sm font-semibold text-[#111827] mb-1.5">
+                  Application Type
+                </label>
+                <select
+                  value={appType}
+                  onChange={(e) => setAppType(e.target.value)}
+                  className="w-full bg-[#ebf3fc] border border-[#d2e3f8] text-[#1c385c] rounded-lg px-3.5 py-2.5 text-sm font-medium outline-none cursor-pointer"
+                >
+                  {APPLICATION_TYPES.map((t) => (
+                    <option key={t} value={t}>
+                      {t}
+                    </option>
+                  ))}
+                </select>
               </div>
 
-              {/* Snapshot details */}
-              <div className="mt-6 pt-5 border-t border-[#edf0ee] space-y-2.5 text-[13px]">
-                <div className="flex justify-between">
-                  <span className="text-[#677472]">Assigned Case Manager:</span>
-                  <strong className="text-[#202d2d]">{matter.owner}</strong>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-[#677472]">Responsible RCIC:</span>
-                  <strong className="text-[#202d2d]">Tejinder Bhatthal (RCIC-IRB)</strong>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-[#677472]">Accepted Documents:</span>
-                  <strong className="text-[#202d2d]">
-                    {matter.docs.filter((d) => ['Approved', 'Not Applicable'].includes(d.status)).length} of {matter.docs.length}
-                  </strong>
-                </div>
-                {matter.submission && (
-                  <div className="p-3 bg-[#e8f3ed] rounded-lg border border-[#b9dfbf] text-[#176328] mt-2">
-                    <div className="font-bold">Submitted to {matter.submission.portal}</div>
-                    <div className="text-[11.5px] mt-0.5">
-                      Ref: {matter.submission.ref} · Date: {formatDueDate(matter.submission.date)} · By: {matter.submission.by}
-                    </div>
-                  </div>
-                )}
+              <div>
+                <label className="block text-sm font-semibold text-[#111827] mb-1.5">
+                  Your application type
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. with Restoration"
+                  value={customAppType}
+                  onChange={(e) => setCustomAppType(e.target.value)}
+                  className="w-full bg-white border border-[#d1d5db] rounded-lg px-3.5 py-2.5 text-sm text-[#111827] outline-none"
+                />
               </div>
             </div>
 
-            {/* Important Dates */}
-            <div className="bg-white border border-[#dfe5e3] rounded-xl p-5 shadow-xs">
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="text-[16px] font-bold text-[#202d2d]">Important Dates</h3>
-                <button
-                  onClick={onAddDeadline}
-                  className="text-[12.5px] font-semibold text-[#a7653b] hover:underline"
-                >
-                  + Add deadline
-                </button>
-              </div>
-
-              <div className="space-y-2">
-                {matter.dates.map((d, i) => (
-                  <div key={i} className="flex items-center justify-between p-2 bg-[#f8faf9] rounded border border-[#edf0ee] text-[13px]">
-                    <span className="text-[#677472]">{d.label}</span>
-                    <strong className="text-[#202d2d]">{formatDueDate(d.date)}</strong>
-                  </div>
+            <div>
+              <label className="block text-sm font-semibold text-[#111827] mb-1.5">
+                Case Manager
+              </label>
+              <select
+                value={caseManager}
+                onChange={(e) => setCaseManager(e.target.value)}
+                className="w-full bg-[#ebf3fc] border border-[#d2e3f8] text-[#1c385c] rounded-lg px-3.5 py-2.5 text-sm font-medium outline-none cursor-pointer max-w-md"
+              >
+                <option value="Unassigned">Unassigned</option>
+                {STAFF_MEMBERS.map((s) => (
+                  <option key={s} value={s}>
+                    {s}
+                  </option>
                 ))}
-                {matter.hard && (
-                  <div className="flex items-center justify-between p-2 bg-[#fee2e2] rounded border border-[#fca5a5] text-[13px]">
-                    <span className="font-bold text-[#991b1b]">Hard Legal Deadline</span>
-                    <strong className="text-[#991b1b]">{formatDueDate(matter.hard)}</strong>
-                  </div>
-                )}
-              </div>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-[#111827] mb-1.5">
+                Case Overview
+              </label>
+              <textarea
+                rows={7}
+                value={caseOverview}
+                onChange={(e) => setCaseOverview(e.target.value)}
+                className="w-full bg-white border border-[#d1d5db] rounded-lg p-3 text-sm text-[#111827] outline-none leading-relaxed"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-[#111827] mb-1.5">
+                Extra Notes
+              </label>
+              <textarea
+                rows={3}
+                placeholder="Additional notes for this application"
+                value={extraNotes}
+                onChange={(e) => setExtraNotes(e.target.value)}
+                className="w-full bg-white border border-[#d1d5db] rounded-lg p-3 text-sm text-[#111827] outline-none"
+              />
             </div>
           </div>
 
-          <div className="space-y-6">
-            {/* Case Summary & Strategy */}
-            <div className="bg-white border border-[#dfe5e3] rounded-xl p-5 shadow-xs">
-              <h2 className="text-[17px] font-bold text-[#202d2d] mb-3">Case Strategy & Risk Flags</h2>
-              
-              <div className="space-y-4 text-[13.5px]">
-                <div>
-                  <label className="block text-[12px] font-semibold uppercase text-[#677472] mb-1">
-                    Recommended Case Strategy
-                  </label>
-                  <textarea
-                    rows={4}
-                    value={strategyText}
-                    onChange={(e) => setStrategyText(e.target.value)}
-                    className="w-full p-2.5 border border-[#cbd5d1] rounded-md text-[#202d2d] outline-none focus:border-[#246b54]"
-                  />
-                </div>
+          {/* Dependants Card (SCR-041) */}
+          <div className="bg-white rounded-xl border border-[#e5e7eb] shadow-2xs p-6 space-y-4">
+            <h2 className="text-base font-bold text-[#111827]">Dependants</h2>
+            <div>
+              <label className="block text-sm font-semibold text-[#111827] mb-1.5">
+                Any dependants?
+              </label>
+              <select
+                value={hasDependants}
+                onChange={(e) => setHasDependants(e.target.value)}
+                className="w-full bg-[#ebf3fc] border border-[#d2e3f8] text-[#1c385c] rounded-lg px-3.5 py-2.5 text-sm font-medium outline-none cursor-pointer"
+              >
+                <option value="No">No</option>
+                <option value="Yes">Yes</option>
+              </select>
+            </div>
+          </div>
 
-                <div>
-                  <label className="block text-[12px] font-semibold uppercase text-[#677472] mb-1">
-                    Risks & Important Facts
-                  </label>
-                  <input
-                    type="text"
-                    value={riskText}
-                    onChange={(e) => setRiskText(e.target.value)}
-                    className="w-full p-2.5 border border-[#cbd5d1] rounded-md text-[#202d2d] outline-none focus:border-[#246b54]"
-                  />
-                </div>
-
-                <button
-                  onClick={handleSaveStrategy}
-                  className="px-4 py-2 bg-[#12382e] hover:bg-[#1a503e] text-white text-[13px] font-semibold rounded-md transition-colors"
-                >
-                  Save strategy & risks
-                </button>
+          {/* PR Tracking Card (SCR-041) */}
+          <div className="bg-white rounded-xl border border-[#e5e7eb] shadow-2xs p-6 space-y-4">
+            <h2 className="text-base font-bold text-[#111827]">PR Tracking</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              <div>
+                <label className="block text-sm font-semibold text-[#111827] mb-1.5">
+                  ITA date
+                </label>
+                <input
+                  type="date"
+                  value={itaDate}
+                  onChange={(e) => setItaDate(e.target.value)}
+                  className="w-full bg-white border border-[#d1d5db] rounded-lg px-3.5 py-2 text-sm text-[#111827] outline-none"
+                />
               </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-[#111827] mb-1.5">
+                  Deadline to Submit
+                </label>
+                <input
+                  type="date"
+                  value={deadlineSubmit}
+                  onChange={(e) => setDeadlineSubmit(e.target.value)}
+                  className="w-full bg-white border border-[#d1d5db] rounded-lg px-3.5 py-2 text-sm text-[#111827] outline-none"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-[#111827] mb-1.5">
+                Notes
+              </label>
+              <textarea
+                rows={4}
+                value={prNotes}
+                onChange={(e) => setPrNotes(e.target.value)}
+                className="w-full bg-white border border-[#d1d5db] rounded-lg p-3 text-sm text-[#111827] outline-none"
+              />
             </div>
           </div>
         </div>
       )}
 
-      {/* TAB 2: STRATEGY */}
-      {activeTab === 'Strategy' && (
-        <div className="bg-white border border-[#dfe5e3] rounded-xl p-5 sm:p-6 shadow-xs max-w-4xl 2xl:max-w-5xl space-y-5">
+      {/* ======================================================== */}
+      {/* TAB 2: CLIENT INFORMATION (SCR-042)                      */}
+      {/* ======================================================== */}
+      {activeTab === 'Client Information' && (
+        <div className="bg-white rounded-xl border border-[#e5e7eb] shadow-2xs p-6 space-y-5">
           <div>
-            <h2 className="text-xl font-bold text-[#202d2d]">Case Strategy & Consultant Instructions</h2>
-            <p className="text-[13px] text-[#677472] mt-0.5">
-              Internal only · Hidden from client portal view.
+            <h2 className="text-base font-bold text-[#111827]">Client Information</h2>
+            <p className="text-xs text-[#6b7280] mt-0.5">
+              Shared with the main client profile and every application. Changes save automatically.
             </p>
           </div>
 
-          <div className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             <div>
-              <label className="block font-semibold text-[13.5px] text-[#202d2d] mb-1">
-                Client Situation, Objective and Evidence Plan
-              </label>
-              <textarea
-                rows={6}
-                value={strategyText}
-                onChange={(e) => setStrategyText(e.target.value)}
-                className="w-full p-3 border border-[#cbd5d1] rounded-md text-[13.5px] text-[#202d2d] outline-none focus:border-[#246b54]"
-              />
-            </div>
-
-            <div>
-              <label className="block font-semibold text-[13.5px] text-[#202d2d] mb-1">
-                Risk Factors to Review
+              <label className="block text-sm font-semibold text-[#111827] mb-1.5">
+                Full name
               </label>
               <input
                 type="text"
-                value={riskText}
-                onChange={(e) => setRiskText(e.target.value)}
-                className="w-full p-2.5 border border-[#cbd5d1] rounded-md text-[13.5px] text-[#202d2d] outline-none focus:border-[#246b54]"
+                value={clientName}
+                onChange={(e) => setClientName(e.target.value)}
+                className="w-full bg-white border border-[#d1d5db] rounded-lg px-3.5 py-2.5 text-sm text-[#111827] outline-none"
               />
             </div>
 
-            <button
-              onClick={handleSaveStrategy}
-              className="px-5 py-2.5 bg-[#12382e] hover:bg-[#1a503e] text-white text-[13.5px] font-semibold rounded-md transition-colors shadow-xs"
-            >
-              Save Strategy
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* TAB 3: CHECKLIST & DOCUMENTS */}
-      {activeTab === 'Checklist & Documents' && (
-        <div className="bg-white border border-[#dfe5e3] rounded-xl p-6 shadow-xs space-y-6">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#edf0ee] pb-4">
             <div>
-              <h2 className="text-xl font-bold text-[#202d2d]">Client Document Checklist</h2>
-              <p className="text-[13px] text-[#677472] mt-0.5">
-                {matter.docs.filter((d) => d.status === 'Approved' || d.status === 'Not Applicable').length} of {matter.docs.length} accepted · Uploaded does not mean approved.
-              </p>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => {
-                  const docName = prompt('Enter document requirement name:')
-                  if (docName) {
-                    onUpdateMatter({
-                      ...matter,
-                      docs: [...matter.docs, { name: docName.trim(), status: 'Requested', version: 0, history: [] }]
-                    })
-                  }
-                }}
-                className="px-3 py-1.5 bg-white border border-[#cbd5d1] rounded-md text-[13px] font-semibold text-[#202d2d] hover:bg-[#f4f6f5]"
-              >
-                + Add requirement
-              </button>
-              <button
-                onClick={() => alert('Checklist sent to client in demo session!')}
-                className="px-3.5 py-1.5 bg-[#12382e] text-white rounded-md text-[13px] font-semibold hover:bg-[#1a503e]"
-              >
-                Send checklist
-              </button>
-            </div>
-          </div>
-
-          <div className="divide-y divide-[#edf0ee]">
-            {matter.docs.map((doc, idx) => (
-              <div key={idx} className="py-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div>
-                  <div className="font-bold text-[14px] text-[#202d2d]">{doc.name}</div>
-                  <div className="text-[12px] text-[#677472]">
-                    {doc.version ? `Version ${doc.version}` : 'Awaiting first upload'}
-                  </div>
-                  {doc.history.length > 0 && (
-                    <div className="text-[11px] text-[#8a9895] mt-0.5">
-                      Latest: {doc.history[0]}
-                    </div>
-                  )}
-                </div>
-
-                <div className="flex flex-wrap items-center gap-2 sm:gap-2.5">
-                  <span
-                    className={`badge ${
-                      doc.status === 'Approved'
-                        ? 'green'
-                        : doc.status === 'Correction Required'
-                        ? 'red'
-                        : 'amber'
-                    }`}
-                  >
-                    {doc.status}
-                  </span>
-
-                  <button
-                    onClick={() => handleSimulateUpload(idx)}
-                    className="px-2.5 py-1 bg-[#f4f6f5] hover:bg-[#e8ecea] border border-[#cbd5d1] rounded text-[12px] font-semibold text-[#202d2d] whitespace-nowrap"
-                  >
-                    Simulate upload
-                  </button>
-
-                  <select
-                    value={doc.status}
-                    onChange={(e) => handleDocStatusChange(idx, e.target.value)}
-                    className="py-1 px-2 border border-[#cbd5d1] rounded text-[12px] font-medium bg-white text-[#202d2d] outline-none"
-                  >
-                    <option value="Requested">Requested</option>
-                    <option value="Uploaded — Review Required">Uploaded</option>
-                    <option value="Approved">Approved</option>
-                    <option value="Correction Required">Correction Required</option>
-                    <option value="Not Applicable">Not Applicable</option>
-                  </select>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          <div className="pt-4 border-t border-[#edf0ee] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <label className="flex items-center gap-2 text-[13px] text-[#677472] cursor-pointer">
+              <label className="block text-sm font-semibold text-[#111827] mb-1.5">
+                Phone number
+              </label>
               <input
-                type="checkbox"
-                checked={matter.noChase}
-                onChange={(e) => onUpdateMatter({ ...matter, noChase: e.target.checked })}
+                type="text"
+                value={clientPhone}
+                onChange={(e) => setClientPhone(e.target.value)}
+                className="w-full bg-white border border-[#d1d5db] rounded-lg px-3.5 py-2.5 text-sm text-[#111827] outline-none"
               />
-              <span>Do not chase client (pause reminders)</span>
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-[#111827] mb-1.5">
+                Email
+              </label>
+              <input
+                type="email"
+                value={clientEmail}
+                onChange={(e) => setClientEmail(e.target.value)}
+                className="w-full bg-white border border-[#d1d5db] rounded-lg px-3.5 py-2.5 text-sm text-[#111827] outline-none"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-[#111827] mb-1.5">
+                Date of birth
+              </label>
+              <input
+                type="date"
+                value={clientDob}
+                onChange={(e) => setClientDob(e.target.value)}
+                className="w-full bg-white border border-[#d1d5db] rounded-lg px-3.5 py-2 text-sm text-[#111827] outline-none"
+              />
+            </div>
+
+            <div className="md:col-span-2">
+              <label className="block text-sm font-semibold text-[#111827] mb-1.5">
+                Address
+              </label>
+              <input
+                type="text"
+                value={clientAddress}
+                onChange={(e) => setClientAddress(e.target.value)}
+                className="w-full bg-white border border-[#d1d5db] rounded-lg px-3.5 py-2.5 text-sm text-[#111827] outline-none"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-[#111827] mb-1.5">
+                UCI
+              </label>
+              <input
+                type="text"
+                value={clientUci}
+                onChange={(e) => setClientUci(e.target.value)}
+                className="w-full bg-white border border-[#d1d5db] rounded-lg px-3.5 py-2.5 text-sm text-[#111827] outline-none"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-[#111827] mb-1.5">
+                Immigration status
+              </label>
+              <input
+                type="text"
+                value={immigrationStatus}
+                onChange={(e) => setImmigrationStatus(e.target.value)}
+                className="w-full bg-white border border-[#d1d5db] rounded-lg px-3.5 py-2.5 text-sm text-[#111827] outline-none"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-[#111827] mb-1.5">
+                Status expiry
+              </label>
+              <input
+                type="date"
+                value={statusExpiry}
+                onChange={(e) => setStatusExpiry(e.target.value)}
+                className="w-full bg-[#eaf4ee] border border-emerald-300 rounded-lg px-3.5 py-2 text-sm text-[#111827] outline-none"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-[#111827] mb-1.5">
+                Emergency contact name
+              </label>
+              <input
+                type="text"
+                value={emergencyName}
+                onChange={(e) => setEmergencyName(e.target.value)}
+                className="w-full bg-white border border-[#d1d5db] rounded-lg px-3.5 py-2.5 text-sm text-[#111827] outline-none"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-[#111827] mb-1.5">
+                Relationship
+              </label>
+              <input
+                type="text"
+                value={emergencyRelation}
+                onChange={(e) => setEmergencyRelation(e.target.value)}
+                className="w-full bg-white border border-[#d1d5db] rounded-lg px-3.5 py-2.5 text-sm text-[#111827] outline-none"
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ======================================================== */}
+      {/* TAB 3: REMINDERS (SCR-043)                               */}
+      {/* ======================================================== */}
+      {activeTab === 'Reminders' && (
+        <div className="bg-white rounded-xl border border-[#e5e7eb] shadow-2xs p-6 space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-base font-bold text-[#111827]">Personal Reminders</h2>
+            <button
+              onClick={() => toast.info('Create reminder for this matter')}
+              className="bg-white hover:bg-[#f9fafb] border border-[#d1d5db] text-[#111827] rounded-lg px-4 py-2 text-sm font-medium transition-colors shadow-2xs cursor-pointer"
+            >
+              + Create Reminder
+            </button>
+          </div>
+          <p className="text-xs text-[#6b7280]">No open reminders for this application.</p>
+        </div>
+      )}
+
+      {/* ======================================================== */}
+      {/* TAB 4: CASE WORK & NOTES (SCR-044)                       */}
+      {/* ======================================================== */}
+      {activeTab === 'Case Work & Notes' && (
+        <div className="bg-white rounded-xl border border-[#e5e7eb] shadow-2xs p-6 space-y-4">
+          <div>
+            <h2 className="text-base font-bold text-[#111827]">Case Work & Notes</h2>
+            <p className="text-xs text-[#6b7280] mt-0.5">
+              Record last contact, what we are waiting for and progress. Each saved note keeps its own timestamp.
+            </p>
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold text-[#111827] mb-1.5">
+              New note
             </label>
+            <textarea
+              rows={5}
+              value={newNote}
+              onChange={(e) => setNewNote(e.target.value)}
+              className="w-full bg-white border border-[#d1d5db] rounded-lg p-3 text-sm text-[#111827] outline-none leading-relaxed"
+            />
+          </div>
 
+          <div>
             <button
-              disabled={!allDocsApproved}
-              onClick={handleMarkDocumentsComplete}
-              className={`px-4 py-2 rounded-md text-[13.5px] font-semibold transition-colors ${
-                allDocsApproved
-                  ? 'bg-[#a7653b] hover:bg-[#8f532d] text-white shadow-xs cursor-pointer'
-                  : 'bg-[#e5ebe7] text-[#8a9895] cursor-not-allowed'
-              }`}
+              onClick={handleSaveNote}
+              className="bg-white hover:bg-[#f9fafb] border border-[#d1d5db] text-[#111827] rounded-lg px-4 py-2 text-sm font-medium transition-colors shadow-2xs cursor-pointer"
             >
-              Documents complete → Unlock Preparation
+              Save Note
             </button>
+          </div>
+
+          <div className="pt-2">
+            {savedNotes.length > 0 ? (
+              <div className="space-y-3">
+                {savedNotes.map((n) => (
+                  <div key={n.id} className="p-3 bg-[#fafbfb] border border-[#e5e7eb] rounded-lg text-sm">
+                    <div className="text-xs text-[#6b7280] mb-1 font-mono">{n.time}</div>
+                    <div className="text-[#111827]">{n.text}</div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-xs text-[#6b7280]">
+                No notes yet. Add the first update for this application.
+              </p>
+            )}
           </div>
         </div>
       )}
 
-      {/* TAB 4: CASE WORK */}
-      {activeTab === 'Case Work' && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Internal Tasks & Forms */}
-          <div className="bg-white border border-[#dfe5e3] rounded-xl p-5 shadow-xs space-y-5">
-            <div className="flex items-center justify-between border-b border-[#edf0ee] pb-3">
-              <h2 className="text-[17px] font-bold text-[#202d2d]">Internal Preparation Checklist</h2>
-              <button
-                onClick={() => {
-                  const taskName = prompt('Enter new task name:')
-                  if (taskName) {
-                    onUpdateMatter({
-                      ...matter,
-                      tasks: [...matter.tasks, { name: taskName.trim(), done: false, owner: matter.owner, due: matter.due }]
-                    })
-                  }
-                }}
-                className="text-[12.5px] font-semibold text-[#a7653b] hover:underline"
-              >
-                + Add task
-              </button>
+      {/* ======================================================== */}
+      {/* TAB 5: DOCUMENTS RECEIVED / VERIFIED (SCR-045)           */}
+      {/* ======================================================== */}
+      {activeTab === 'Documents Received / Verified' && (
+        <div className="bg-white rounded-xl border border-[#e5e7eb] shadow-2xs p-6 space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-base font-bold text-[#111827]">Documents Received / Verified</h2>
+              <p className="text-xs text-[#6b7280] mt-0.5">
+                Edit directly in the list · Changes save automatically
+              </p>
             </div>
-
-            <div className="space-y-2.5">
-              {matter.tasks.map((task, i) => (
-                <div
-                  key={i}
-                  className="flex items-center justify-between p-2.5 bg-[#f8faf9] rounded-lg border border-[#edf0ee] text-[13px]"
-                >
-                  <label className="flex items-center gap-2.5 cursor-pointer flex-1">
-                    <input
-                      type="checkbox"
-                      checked={task.done}
-                      onChange={(e) => handleToggleTask(i, e.target.checked)}
-                      className="w-4 h-4 text-[#246b54] rounded"
-                    />
-                    <span className={task.done ? 'line-through text-[#677472]' : 'font-medium text-[#202d2d]'}>
-                      {task.name}
-                    </span>
-                  </label>
-                  <span className={`badge ${task.done ? 'green' : ''}`}>
-                    {task.done ? 'Complete' : 'Pending'}
-                  </span>
-                </div>
-              ))}
-            </div>
-
-            <div className="pt-4 border-t border-[#edf0ee]">
-              <h3 className="font-bold text-[15px] text-[#202d2d] mb-3">Forms & Submissions</h3>
-              <div className="space-y-2.5">
-                {matter.forms.map((form, i) => (
-                  <div
-                    key={i}
-                    className="flex items-center justify-between p-2.5 bg-[#f8faf9] rounded-lg border border-[#edf0ee] text-[13px]"
-                  >
-                    <span className="font-medium text-[#202d2d]">{form.name}</span>
-                    <select
-                      value={form.status}
-                      onChange={(e) => handleFormStatusChange(i, e.target.value as any)}
-                      className="py-1 px-2 border border-[#cbd5d1] rounded text-[12px] font-semibold bg-white"
-                    >
-                      <option value="Not Started">Not Started</option>
-                      <option value="In Progress">In Progress</option>
-                      <option value="Complete">Complete</option>
-                    </select>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="pt-4 border-t border-[#edf0ee]">
-              <button
-                disabled={matter.stage !== 2 || !allTasksDone || !allFormsComplete}
-                onClick={handleSendForReview}
-                className={`w-full py-2.5 rounded-md text-[13.5px] font-semibold transition-colors ${
-                  matter.stage === 2 && allTasksDone && allFormsComplete
-                    ? 'bg-[#a7653b] hover:bg-[#8f532d] text-white shadow-xs cursor-pointer'
-                    : 'bg-[#e5ebe7] text-[#8a9895] cursor-not-allowed'
-                }`}
-              >
-                Send for RCIC Review
-              </button>
-              {(!allTasksDone || !allFormsComplete) && matter.stage === 2 && (
-                <p className="text-[11.5px] text-[#8a9895] text-center mt-1.5">
-                  Complete all tasks and forms before sending to review.
-                </p>
-              )}
-            </div>
+            <button
+              onClick={handleAddDocumentRow}
+              className="bg-white hover:bg-[#f9fafb] border border-[#d1d5db] text-[#111827] rounded-lg px-4 py-2 text-sm font-medium transition-colors shadow-2xs cursor-pointer"
+            >
+              + Add Document
+            </button>
           </div>
 
-          {/* RCIC Review & Final Preparation */}
-          <div className="space-y-6">
-            {/* RCIC Review Gate */}
-            <div className="bg-white border border-[#dfe5e3] rounded-xl p-5 shadow-xs">
-              <h2 className="text-[17px] font-bold text-[#202d2d] mb-1">RCIC Professional Review</h2>
-              <p className="text-[13px] text-[#677472] mb-4">
-                Tejinder Bhatthal (RCIC-IRB) review gate. Approve package or return specific corrections.
-              </p>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead className="bg-[#fafbfb] border-b border-[#e5e7eb] text-[#6b7280] uppercase tracking-wider font-semibold">
+                <tr>
+                  <th className="py-3 px-3">DOCUMENT</th>
+                  <th className="py-3 px-3">RECEIVED DATE</th>
+                  <th className="py-3 px-3">REVIEW DUE</th>
+                  <th className="py-3 px-3">COUNTDOWN</th>
+                  <th className="py-3 px-3">STATUS</th>
+                  <th className="py-3 px-3">VERIFIED BY</th>
+                  <th className="py-3 px-3">NOTES</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[#f3f4f6]">
+                {docRows.map((doc) => (
+                  <tr key={doc.id} className="hover:bg-[#fbfcfb]">
+                    {/* Document Dropdown */}
+                    <td className="py-3 px-3 align-top">
+                      <select
+                        value={doc.name}
+                        onChange={(e) => handleUpdateDoc(doc.id, 'name', e.target.value)}
+                        className="bg-[#ebf3fc] border border-[#d2e3f8] text-[#1c385c] rounded-md px-2.5 py-1.5 text-xs font-medium outline-none cursor-pointer w-44"
+                      >
+                        <option value="PCC">PCC</option>
+                        <option value="IELTS">IELTS</option>
+                        <option value="Experience Letters">Experience Letters</option>
+                        <option value="Passport">Passport</option>
+                        <option value="Marriage certificate">Marriage certificate</option>
+                      </select>
+                      <div className="text-[11px] text-[#6b7280] mt-1">{clientName}</div>
+                    </td>
 
-              <div className="space-y-3">
-                <div>
-                  <label className="block text-[12px] font-semibold uppercase text-[#677472] mb-1">
-                    Corrections Required (one per line)
-                  </label>
-                  <textarea
-                    rows={3}
-                    placeholder="e.g. Missing address history line&#10;Clarify prior UK refusal"
-                    value={correctionLines}
-                    onChange={(e) => setCorrectionLines(e.target.value)}
-                    className="w-full p-2.5 border border-[#cbd5d1] rounded-md text-[13px] outline-none"
-                  />
-                </div>
-
-                <div className="flex flex-wrap items-center gap-2 sm:gap-2.5">
-                  <button
-                    disabled={matter.stage !== 3 || !correctionLines.trim()}
-                    onClick={handleReturnCorrections}
-                    className={`px-3 py-2 rounded-md text-[13px] font-semibold transition-colors ${
-                      matter.stage === 3 && correctionLines.trim()
-                        ? 'bg-red-700 hover:bg-red-800 text-white cursor-pointer'
-                        : 'bg-[#e5ebe7] text-[#8a9895] cursor-not-allowed'
-                    }`}
-                  >
-                    Return for changes
-                  </button>
-
-                  <button
-                    disabled={matter.stage !== 3}
-                    onClick={handleApproveFinalPreparation}
-                    className={`px-4 py-2 rounded-md text-[13px] font-semibold transition-colors ${
-                      matter.stage === 3
-                        ? 'bg-[#246b54] hover:bg-[#1a503e] text-white shadow-xs cursor-pointer'
-                        : 'bg-[#e5ebe7] text-[#8a9895] cursor-not-allowed'
-                    }`}
-                  >
-                    Approve final preparation
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {/* Final Preparation & Submission */}
-            <div className="bg-white border border-[#dfe5e3] rounded-xl p-5 shadow-xs">
-              <h2 className="text-[17px] font-bold text-[#202d2d] mb-1">Final Preparation & Filing</h2>
-              <p className="text-[13px] text-[#677472] mb-3">
-                Collect client signatures and conduct final package quality checks.
-              </p>
-
-              <div className="space-y-2 text-[13px]">
-                {[
-                  ['signatures', 'Client and representative signatures obtained'],
-                  ['pdfs', 'Final PDF package compiled and bookmarked'],
-                  ['naming', 'File naming standards verified'],
-                  ['check', 'Final package check completed against checklist']
-                ].map(([key, label]) => {
-                  const isChecked = Boolean(matter.finalChecks && matter.finalChecks[key])
-                  return (
-                    <label key={key} className="flex items-center gap-2.5 p-2 bg-[#f8faf9] rounded border border-[#edf0ee] cursor-pointer">
+                    {/* Received Date */}
+                    <td className="py-3 px-3 align-top">
                       <input
-                        type="checkbox"
-                        checked={isChecked}
-                        onChange={() => handleToggleFinalCheck(key)}
-                        className="w-4 h-4 text-[#246b54] rounded"
+                        type="date"
+                        value={doc.receivedDate}
+                        onChange={(e) => handleUpdateDoc(doc.id, 'receivedDate', e.target.value)}
+                        className="bg-white border border-[#d1d5db] rounded-md px-2 py-1 text-xs text-[#111827] outline-none"
                       />
-                      <span className="font-medium text-[#202d2d]">{label}</span>
-                    </label>
-                  )
-                })}
-              </div>
+                    </td>
 
-              <div className="mt-4 pt-3 border-t border-[#edf0ee] flex items-center justify-between">
-                <span className={`badge ${matter.ready ? 'green' : 'amber'}`}>
-                  {matter.ready ? 'Ready to Submit' : 'Checks in progress'}
-                </span>
+                    {/* Review Due */}
+                    <td className="py-3 px-3 align-top">
+                      <input
+                        type="date"
+                        value={doc.reviewDue}
+                        onChange={(e) => handleUpdateDoc(doc.id, 'reviewDue', e.target.value)}
+                        className="bg-white border border-[#d1d5db] rounded-md px-2 py-1 text-xs text-[#111827] outline-none"
+                      />
+                    </td>
 
-                <button
-                  onClick={onRecordSubmission}
-                  className="px-4 py-2 bg-[#a7653b] hover:bg-[#8f532d] text-white rounded-md text-[13px] font-semibold transition-colors shadow-xs"
-                >
-                  Record Submission
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+                    {/* Countdown */}
+                    <td className="py-3 px-3 align-top">
+                      <span className="bg-[#f3f4f6] text-[#6b7280] px-2.5 py-1 rounded text-[11px] font-medium inline-block">
+                        Set review due
+                      </span>
+                    </td>
 
-      {/* TAB 5: COMMUNICATION & NOTES */}
-      {activeTab === 'Communication & Notes' && (
-        <div className="space-y-5">
-          <div className="flex items-center gap-2 border-b border-[#dfe5e3] pb-2 overflow-x-auto scrollbar-none">
-            <button
-              onClick={() => setCommunicationSection('Last Contact')}
-              className={`px-3 py-1.5 rounded-md text-[13px] font-semibold whitespace-nowrap ${
-                communicationSection === 'Last Contact'
-                  ? 'bg-[#12382e] text-white'
-                  : 'text-[#677472] hover:bg-[#edf2ef]'
-              }`}
-            >
-              Last Contact Logs
-            </button>
-            <button
-              onClick={() => setCommunicationSection('Notes & Messages')}
-              className={`px-3 py-1.5 rounded-md text-[13px] font-semibold whitespace-nowrap ${
-                communicationSection === 'Notes & Messages'
-                  ? 'bg-[#12382e] text-white'
-                  : 'text-[#677472] hover:bg-[#edf2ef]'
-              }`}
-            >
-              Internal Notes & Messages
-            </button>
-          </div>
+                    {/* Status Dropdown */}
+                    <td className="py-3 px-3 align-top">
+                      <select
+                        value={doc.status}
+                        onChange={(e) => handleUpdateDoc(doc.id, 'status', e.target.value)}
+                        className="bg-[#ebf3fc] border border-[#d2e3f8] text-[#1c385c] rounded-md px-2.5 py-1.5 text-xs font-medium outline-none cursor-pointer"
+                      >
+                        <option value="Not received">Not received</option>
+                        <option value="Received">Received</option>
+                        <option value="Verified">Verified</option>
+                      </select>
+                    </td>
 
-          {communicationSection === 'Last Contact' ? (
-            <div className="bg-white border border-[#dfe5e3] rounded-xl p-4 sm:p-5 shadow-xs space-y-4">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div>
-                  <h2 className="text-[17px] font-bold text-[#202d2d]">Last Contact History</h2>
-                  <p className="text-[12.5px] text-[#677472]">
-                    Record when you last spoke with the client and summary of what was discussed.
-                  </p>
-                </div>
-                <button
-                  onClick={onRecordContact}
-                  className="px-3.5 py-1.5 bg-[#a7653b] hover:bg-[#8f532d] text-white rounded-md text-[12.5px] font-semibold self-start sm:self-auto"
-                >
-                  + Record contact
-                </button>
-              </div>
+                    {/* Verified By Dropdown */}
+                    <td className="py-3 px-3 align-top">
+                      <select
+                        value={doc.verifiedBy}
+                        onChange={(e) => handleUpdateDoc(doc.id, 'verifiedBy', e.target.value)}
+                        className="bg-[#ebf3fc] border border-[#d2e3f8] text-[#1c385c] rounded-md px-2.5 py-1.5 text-xs font-medium outline-none cursor-pointer"
+                      >
+                        <option value="">Select manager</option>
+                        {STAFF_MEMBERS.map((s) => (
+                          <option key={s} value={s}>
+                            {s}
+                          </option>
+                        ))}
+                      </select>
+                    </td>
 
-              <div className="space-y-3">
-                {(matter.contactsLog || []).map((c) => (
-                  <div key={c.id} className="p-3 bg-[#f8faf9] rounded-lg border border-[#edf0ee] text-[13px]">
-                    <div className="flex items-center justify-between font-bold text-[#12382e]">
-                      <span>{formatDueDate(c.date)} · {c.time} (Vancouver)</span>
-                      <span className="badge blue">{c.method}</span>
-                    </div>
-                    <div className="text-[12px] text-[#677472] mt-0.5">
-                      Contact with {c.person} · Recorded by {c.staff}
-                    </div>
-                    <p className="mt-2 text-[#202d2d] leading-relaxed whitespace-pre-wrap">
-                      {c.explanation}
-                    </p>
-                  </div>
+                    {/* Notes */}
+                    <td className="py-3 px-3 align-top">
+                      <input
+                        type="text"
+                        placeholder="Type notes..."
+                        value={doc.notes}
+                        onChange={(e) => handleUpdateDoc(doc.id, 'notes', e.target.value)}
+                        className="bg-white border border-[#d1d5db] rounded-md px-2.5 py-1.5 text-xs text-[#111827] outline-none w-48"
+                      />
+                    </td>
+                  </tr>
                 ))}
-
-                {(!matter.contactsLog || matter.contactsLog.length === 0) && (
-                  <p className="text-[#677472] py-6 text-center text-[13px]">
-                    No contact recorded for this file yet. Click "+ Record contact" above.
-                  </p>
-                )}
-              </div>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Internal Notes */}
-              <div className="bg-white border border-[#dfe5e3] rounded-xl p-5 shadow-xs space-y-4">
-                <h2 className="text-[17px] font-bold text-[#202d2d]">Internal Notes</h2>
-                <div className="space-y-3">
-                  <select
-                    value={newNoteType}
-                    onChange={(e) => setNewNoteType(e.target.value)}
-                    className="w-full p-2 border border-[#cbd5d1] rounded-md text-[13px] bg-white"
-                  >
-                    <option value="Internal Note">Internal Note</option>
-                    <option value="Client Call">Client Call</option>
-                    <option value="Consultation">Consultation</option>
-                    <option value="RCIC Instruction">RCIC Instruction</option>
-                    <option value="Government Communication">Government Communication</option>
-                  </select>
-
-                  <textarea
-                    rows={3}
-                    placeholder="Record notes. Use @Inderpreet to mention staff..."
-                    value={newNoteText}
-                    onChange={(e) => setNewNoteText(e.target.value)}
-                    className="w-full p-2.5 border border-[#cbd5d1] rounded-md text-[13px] outline-none"
-                  />
-
-                  <button
-                    onClick={handleAddNote}
-                    className="px-4 py-2 bg-[#12382e] hover:bg-[#1a503e] text-white rounded-md text-[13px] font-semibold"
-                  >
-                    Save note
-                  </button>
-                </div>
-
-                <div className="pt-4 border-t border-[#edf0ee] space-y-3">
-                  {matter.notes.map((n, i) => {
-                    const isObj = typeof n !== 'string'
-                    const noteType = isObj ? n.type : 'Internal Note'
-                    const noteText = isObj ? n.text : n
-                    const noteDate = isObj ? n.date : 'Recent'
-
-                    return (
-                      <div key={i} className="p-2.5 bg-[#f8faf9] rounded border border-[#edf0ee] text-[13px]">
-                        <div className="flex items-center justify-between mb-1">
-                          <span className="badge blue text-[11px]">{noteType}</span>
-                          <span className="text-[11px] text-[#8a9895]">{formatDueDate(noteDate)}</span>
-                        </div>
-                        <p className="text-[#202d2d] leading-normal">{noteText}</p>
-                      </div>
-                    )
-                  })}
-                </div>
-              </div>
-
-              {/* Client Messages */}
-              <div className="bg-white border border-[#dfe5e3] rounded-xl p-5 shadow-xs space-y-4">
-                <h2 className="text-[17px] font-bold text-[#202d2d]">Client Portal Messages</h2>
-                <div className="space-y-3">
-                  {(matter.messages || []).map((m, idx) => (
-                    <div
-                      key={idx}
-                      className={`p-3 rounded-lg text-[13px] ${
-                        m.from === 'Staff' ? 'bg-[#eaf6f0] border border-[#c6e4d4]' : 'bg-[#f4f6f5] border border-[#dfe5e3]'
-                      }`}
-                    >
-                      <div className="font-bold text-[11.5px] text-[#12382e] mb-1">
-                        {m.from === 'Staff' ? 'Nationrise Staff' : 'Client'}
-                      </div>
-                      <p className="text-[#202d2d]">{m.text}</p>
-                    </div>
-                  ))}
-                  {(!matter.messages || matter.messages.length === 0) && (
-                    <p className="text-[#677472] py-4 text-center text-[12.5px]">
-                      No messages yet in this client conversation.
-                    </p>
-                  )}
-                </div>
-
-                <div className="pt-4 border-t border-[#edf0ee] space-y-2">
-                  <textarea
-                    rows={2}
-                    placeholder="Type message to client in portal..."
-                    value={demoMessageText}
-                    onChange={(e) => setDemoMessageText(e.target.value)}
-                    className="w-full p-2.5 border border-[#cbd5d1] rounded-md text-[13px] outline-none"
-                  />
-                  <button
-                    onClick={handleSendPortalMessage}
-                    className="px-4 py-1.5 bg-[#246b54] hover:bg-[#1a503e] text-white rounded-md text-[12.5px] font-semibold"
-                  >
-                    Send demo message
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* TAB 6: TIMELINE */}
-      {activeTab === 'Timeline' && (
-        <div className="bg-white border border-[#dfe5e3] rounded-xl p-6 shadow-xs max-w-2xl space-y-4">
-          <h2 className="text-xl font-bold text-[#202d2d] mb-4">Audit & Activity Timeline</h2>
-          <div className="space-y-3">
-            {matter.events.map((evt, idx) => (
-              <div key={idx} className="flex items-start gap-3 p-3 bg-[#f8faf9] rounded-lg border border-[#edf0ee]">
-                <Clock className="w-4 h-4 text-[#a7653b] shrink-0 mt-0.5" />
-                <div className="text-[13px]">
-                  <div className="font-medium text-[#202d2d]">{evt}</div>
-                  <div className="text-[11px] text-[#8a9895] mt-0.5">Nationrise CaseOS Session Activity</div>
-                </div>
-              </div>
-            ))}
+              </tbody>
+            </table>
           </div>
+
+          <p className="text-xs text-[#6b7280] pt-2">
+            Countdown updates automatically from Review due and stops when Verified.
+          </p>
         </div>
       )}
+
+      {/* Sticky / Fixed Bottom Action Bar matching SCR-040 to SCR-045 */}
+      <div className="fixed bottom-0 left-0 right-0 lg:left-64 bg-white/95 backdrop-blur-xs border-t border-[#e5e7eb] px-6 py-3.5 z-40 flex flex-wrap items-center justify-between gap-4">
+        {/* Left Status & Delete */}
+        <div className="flex items-center gap-4 text-sm">
+          {activeTab === 'Documents Received / Verified' ? (
+            <span className="text-[#166534] font-medium">
+              Not saved — Invalid document review record
+            </span>
+          ) : (
+            <span className="text-[#166534] font-medium">Saving...</span>
+          )}
+          <button
+            onClick={handleDeleteApplication}
+            className="text-[#b91c1c] hover:underline font-medium cursor-pointer"
+          >
+            Delete Application
+          </button>
+        </div>
+
+        {/* Right Actions */}
+        <div className="flex items-center gap-3">
+          <button
+            onClick={handleCloseFile}
+            className="bg-white hover:bg-[#f9fafb] border border-[#d1d5db] text-[#111827] rounded-lg px-4 py-2 text-sm font-medium transition-colors shadow-2xs cursor-pointer"
+          >
+            Close File — Not Proceeding
+          </button>
+          <button
+            onClick={onBack}
+            className="bg-white hover:bg-[#f9fafb] border border-[#d1d5db] text-[#111827] rounded-lg px-4 py-2 text-sm font-medium transition-colors shadow-2xs cursor-pointer"
+          >
+            Back to Client Profile
+          </button>
+          <button
+            onClick={handleMoveToPR}
+            className="bg-[#182c23] hover:bg-[#12231c] text-white rounded-lg px-5 py-2 text-sm font-medium transition-colors shadow-2xs cursor-pointer"
+          >
+            Move to PR Applications
+          </button>
+        </div>
+      </div>
     </div>
   )
 }

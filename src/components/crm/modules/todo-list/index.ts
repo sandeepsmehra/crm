@@ -1,3 +1,4 @@
-export * from './TodoListMattersView'
-export * from './NewMatterModal'
-export * from './RecordSubmissionModal'
+export { TodoListMattersView } from './TodoListMattersView'
+export { NewMatterModal } from './NewMatterModal'
+export { RecordSubmissionModal } from './RecordSubmissionModal'
+export { LmiaModal } from './LmiaModal'
