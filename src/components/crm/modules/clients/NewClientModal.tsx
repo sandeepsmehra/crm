@@ -33,6 +33,7 @@ export function NewClientModal({
   const [receptionAlert, setReceptionAlert] = useState('')
   const [consultationDateTime, setConsultationDateTime] = useState('')
   const [validationErrors, setValidationErrors] = useState<string[]>([])
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
 
   if (!isOpen) return null
 
@@ -48,6 +49,7 @@ export function NewClientModal({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     setValidationErrors([])
+    setFieldErrors({})
 
     const candidateData = {
       name: name.trim(),
@@ -65,9 +67,17 @@ export function NewClientModal({
     // 1. Zod Validation
     const zodResult = clientZodSchema.safeParse(candidateData)
     if (!zodResult.success) {
+      const errMap: Record<string, string> = {}
+      zodResult.error.issues.forEach((issue) => {
+        const key = issue.path[0] as string
+        if (key && !errMap[key]) {
+          errMap[key] = issue.message
+        }
+      })
+      setFieldErrors(errMap)
       const errMsgs = zodResult.error.issues.map((i) => i.message)
       setValidationErrors(errMsgs)
-      toast.error(errMsgs[0] || 'Validation error')
+      toast.error(errMsgs[0] || 'Please complete all required fields')
       return
     }
 
@@ -141,7 +151,7 @@ export function NewClientModal({
         )}
 
         {/* Form Body */}
-        <form onSubmit={handleSubmit} className="p-5 space-y-4 overflow-y-auto flex-1 text-[13.5px]">
+        <form noValidate onSubmit={handleSubmit} className="p-5 space-y-4 overflow-y-auto flex-1 text-[13.5px]">
           {duplicate && (
             <div className="p-3 bg-[#fdf2f2] border border-[#fca5a5] rounded-lg text-[#991b1b] text-[12.5px] flex items-start gap-2">
               <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-[#ae4343]" />
@@ -184,11 +194,22 @@ export function NewClientModal({
             <input
               type="text"
               value={name}
-              onChange={(e) => setName(e.target.value)}
+              onChange={(e) => {
+                setName(e.target.value)
+                if (fieldErrors.name) setFieldErrors((p) => ({ ...p, name: '' }))
+              }}
               placeholder={kind === 'Individual' ? 'e.g. Gurpreet Singh' : 'e.g. Fraser Valley Foods Ltd.'}
-              className="w-full p-2 border border-[#cbd5d1] rounded-md outline-none focus:border-[#246b54]"
-              required
+              className={`w-full p-2 border rounded-md outline-none transition-colors ${
+                fieldErrors.name
+                  ? 'border-red-500 bg-red-50/20 focus:border-red-500'
+                  : 'border-[#cbd5d1] focus:border-[#246b54]'
+              }`}
             />
+            {fieldErrors.name && (
+              <p className="text-[12px] text-red-600 mt-1 font-medium flex items-center gap-1">
+                <span>•</span> {fieldErrors.name}
+              </p>
+            )}
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -197,22 +218,44 @@ export function NewClientModal({
               <input
                 type="tel"
                 value={phone}
-                onChange={(e) => setPhone(e.target.value)}
+                onChange={(e) => {
+                  setPhone(e.target.value)
+                  if (fieldErrors.phone) setFieldErrors((p) => ({ ...p, phone: '' }))
+                }}
                 placeholder="604-555-0100"
-                className="w-full p-2 border border-[#cbd5d1] rounded-md outline-none focus:border-[#246b54]"
-                required
+                className={`w-full p-2 border rounded-md outline-none transition-colors ${
+                  fieldErrors.phone
+                    ? 'border-red-500 bg-red-50/20 focus:border-red-500'
+                    : 'border-[#cbd5d1] focus:border-[#246b54]'
+                }`}
               />
+              {fieldErrors.phone && (
+                <p className="text-[12px] text-red-600 mt-1 font-medium flex items-center gap-1">
+                  <span>•</span> {fieldErrors.phone}
+                </p>
+              )}
             </div>
             <div>
               <label className="block font-semibold text-[#202d2d] mb-1">Email Address *</label>
               <input
                 type="email"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(e) => {
+                  setEmail(e.target.value)
+                  if (fieldErrors.email) setFieldErrors((p) => ({ ...p, email: '' }))
+                }}
                 placeholder="client@example.com"
-                className="w-full p-2 border border-[#cbd5d1] rounded-md outline-none focus:border-[#246b54]"
-                required
+                className={`w-full p-2 border rounded-md outline-none transition-colors ${
+                  fieldErrors.email
+                    ? 'border-red-500 bg-red-50/20 focus:border-red-500'
+                    : 'border-[#cbd5d1] focus:border-[#246b54]'
+                }`}
               />
+              {fieldErrors.email && (
+                <p className="text-[12px] text-red-600 mt-1 font-medium flex items-center gap-1">
+                  <span>•</span> {fieldErrors.email}
+                </p>
+              )}
             </div>
           </div>
 

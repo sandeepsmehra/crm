@@ -19,6 +19,7 @@ export function CaseManagersView({
 }: CaseManagersViewProps) {
   const [isAddOpen, setIsAddOpen] = useState(false)
   const [newManagerName, setNewManagerName] = useState('')
+  const [nameError, setNameError] = useState('')
 
   const managersData = [
     { name: 'Amanpreet', openFiles: 6 },
@@ -34,9 +35,16 @@ export function CaseManagersView({
   const handleAddSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (!newManagerName.trim()) {
+      setNameError('Case manager name is required')
       toast.error('Case manager name is required')
       return
     }
+    if (newManagerName.trim().length < 2) {
+      setNameError('Manager name must be at least 2 characters')
+      toast.error('Manager name must be at least 2 characters')
+      return
+    }
+    setNameError('')
     onAddManager(newManagerName.trim())
     setNewManagerName('')
     setIsAddOpen(false)
@@ -124,21 +132,32 @@ export function CaseManagersView({
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <div className="bg-white rounded-xl shadow-xl max-w-sm w-full p-5 space-y-4">
             <h3 className="text-lg font-bold text-[#1c2826]">Add Case Manager</h3>
-            <form onSubmit={handleAddSubmit} className="space-y-4">
+            <form noValidate onSubmit={handleAddSubmit} className="space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-[#1c2826] mb-1">Manager Name</label>
+                <label className="block text-xs font-semibold text-[#1c2826] mb-1">Manager Name *</label>
                 <input
                   type="text"
                   placeholder="e.g. Jaspreet"
                   value={newManagerName}
-                  onChange={(e) => setNewManagerName(e.target.value)}
-                  className="w-full px-3 py-2 border border-[#d1d5db] rounded-md text-sm outline-none focus:border-[#126b48]"
+                  onChange={(e) => {
+                    setNewManagerName(e.target.value)
+                    if (nameError) setNameError('')
+                  }}
+                  className={`w-full px-3 py-2 border ${
+                    nameError ? 'border-red-500 ring-1 ring-red-500' : 'border-[#d1d5db]'
+                  } rounded-md text-sm outline-none focus:border-[#126b48]`}
                 />
+                {nameError && (
+                  <p className="mt-1 text-[11.5px] text-red-600 font-medium">⚠️ {nameError}</p>
+                )}
               </div>
               <div className="flex justify-end gap-2 pt-2">
                 <button
                   type="button"
-                  onClick={() => setIsAddOpen(false)}
+                  onClick={() => {
+                    setIsAddOpen(false)
+                    setNameError('')
+                  }}
                   className="px-3 py-1.5 border border-[#d1d5db] text-xs font-medium rounded-md text-[#374151]"
                 >
                   Cancel

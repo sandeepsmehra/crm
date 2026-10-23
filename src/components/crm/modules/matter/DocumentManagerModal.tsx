@@ -5,6 +5,8 @@ import { addDays } from '@/lib/crmUtils'
 import { toast } from '@/components/ui/sonner'
 import { X, FileCheck, UploadCloud, AlertCircle } from 'lucide-react'
 
+import { documentManagerZodSchema } from './matter.validation'
+
 interface DocumentManagerModalProps {
   isOpen: boolean
   onClose: () => void
@@ -28,13 +30,39 @@ export function DocumentManagerModal({
   const [verifiedBy, setVerifiedBy] = useState(existingDoc?.verifiedBy || STAFF_MEMBERS[0])
   const [notes, setNotes] = useState(existingDoc?.notes || '')
   const [fileName, setFileName] = useState(existingDoc?.fileName || 'Scanned-Document.pdf')
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
 
   if (!isOpen) return null
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
 
-    const docName = kind === 'Other' ? (customName.trim() || 'Custom Document') : kind
+    const parseResult = documentManagerZodSchema.safeParse({
+      kind,
+      customName: customName.trim(),
+      received,
+      reviewDue,
+      status,
+      verifiedBy
+    })
+
+    if (!parseResult.success) {
+      const newErrors: Record<string, string> = {}
+      parseResult.error.issues.forEach((err) => {
+        const fieldName = err.path[0] as string
+        if (fieldName && !newErrors[fieldName]) {
+          newErrors[fieldName] = err.message
+        }
+      })
+      setFieldErrors(newErrors)
+      const firstMsg = parseResult.error.issues[0]?.message || 'Please check document fields'
+      toast.error(firstMsg)
+      return
+    }
+
+    setFieldErrors({})
+
+    const docName = kind === 'Other' ? customName.trim() : kind
     const updatedDoc: DocumentRecord = {
       id: existingDoc ? existingDoc.id : `DOC-${Date.now().toString().slice(-4)}`,
       kind,
@@ -73,12 +101,29 @@ export function DocumentManagerModal({
         </div>
 
         {/* Form Body */}
-        <form onSubmit={handleSubmit} className="p-5 space-y-4 overflow-y-auto flex-1 text-[13.5px]">
+        <form noValidate onSubmit={handleSubmit} className="p-5 space-y-4 overflow-y-auto flex-1 text-[13.5px]">
+          {Object.keys(fieldErrors).length > 0 && (
+            <div className="p-3 bg-red-50 border border-red-200 rounded-lg flex items-start gap-2.5 text-red-700">
+              <AlertCircle className="w-4 h-4 text-red-500 mt-0.5 shrink-0" />
+              <div className="text-[12px] leading-snug">
+                <span className="font-semibold">Please fix the following validation errors:</span>
+                <ul className="list-disc list-inside mt-1 space-y-0.5">
+                  {Object.values(fieldErrors).map((msg, idx) => (
+                    <li key={idx}>{msg}</li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          )}
+
           <div>
             <label className="block font-semibold text-[#202d2d] mb-1">Document Category</label>
             <select
               value={kind}
-              onChange={(e) => setKind(e.target.value)}
+              onChange={(e) => {
+                setKind(e.target.value)
+                if (fieldErrors.kind) setFieldErrors((prev) => ({ ...prev, kind: '' }))
+              }}
               className="w-full p-2 border border-[#cbd5d1] rounded-md bg-white outline-none focus:border-[#246b54]"
             >
               <option value="Passport Copy">Passport / Identity Document</option>
@@ -98,35 +143,56 @@ export function DocumentManagerModal({
               <label className="block font-semibold text-[#202d2d] mb-1">Custom Document Title *</label>
               <input
                 type="text"
-                required
                 value={customName}
-                onChange={(e) => setCustomName(e.target.value)}
+                onChange={(e) => {
+                  setCustomName(e.target.value)
+                  if (fieldErrors.customName) setFieldErrors((prev) => ({ ...prev, customName: '' }))
+                }}
                 placeholder="e.g. Statutory Declaration of Common-Law Union"
-                className="w-full p-2 border border-[#cbd5d1] rounded-md outline-none focus:border-[#246b54]"
+                className={`w-full p-2 border ${
+                  fieldErrors.customName ? 'border-red-500 ring-1 ring-red-500' : 'border-[#cbd5d1]'
+                } rounded-md outline-none focus:border-[#246b54]`}
               />
+              {fieldErrors.customName && (
+                <p className="mt-1 text-[11.5px] text-red-600 font-medium">⚠️ {fieldErrors.customName}</p>
+              )}
             </div>
           )}
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block font-semibold text-[#202d2d] mb-1">Received Date</label>
+              <label className="block font-semibold text-[#202d2d] mb-1">Received Date *</label>
               <input
                 type="date"
-                required
                 value={received}
-                onChange={(e) => setReceived(e.target.value)}
-                className="w-full p-2 border border-[#cbd5d1] rounded-md outline-none focus:border-[#246b54]"
+                onChange={(e) => {
+                  setReceived(e.target.value)
+                  if (fieldErrors.received) setFieldErrors((prev) => ({ ...prev, received: '' }))
+                }}
+                className={`w-full p-2 border ${
+                  fieldErrors.received ? 'border-red-500 ring-1 ring-red-500' : 'border-[#cbd5d1]'
+                } rounded-md outline-none focus:border-[#246b54]`}
               />
+              {fieldErrors.received && (
+                <p className="mt-1 text-[11.5px] text-red-600 font-medium">⚠️ {fieldErrors.received}</p>
+              )}
             </div>
             <div>
-              <label className="block font-semibold text-[#202d2d] mb-1">Review Due Date</label>
+              <label className="block font-semibold text-[#202d2d] mb-1">Review Due Date *</label>
               <input
                 type="date"
-                required
                 value={reviewDue}
-                onChange={(e) => setReviewDue(e.target.value)}
-                className="w-full p-2 border border-[#cbd5d1] rounded-md outline-none focus:border-[#246b54]"
+                onChange={(e) => {
+                  setReviewDue(e.target.value)
+                  if (fieldErrors.reviewDue) setFieldErrors((prev) => ({ ...prev, reviewDue: '' }))
+                }}
+                className={`w-full p-2 border ${
+                  fieldErrors.reviewDue ? 'border-red-500 ring-1 ring-red-500' : 'border-[#cbd5d1]'
+                } rounded-md outline-none focus:border-[#246b54]`}
               />
+              {fieldErrors.reviewDue && (
+                <p className="mt-1 text-[11.5px] text-red-600 font-medium">⚠️ {fieldErrors.reviewDue}</p>
+              )}
             </div>
           </div>
 

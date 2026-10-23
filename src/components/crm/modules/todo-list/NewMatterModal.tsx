@@ -1,7 +1,9 @@
 import React, { useState } from 'react'
 import { Matter, Client } from '@/types/crm'
 import { APPLICATION_TYPES, STAFF_MEMBERS, TODAY, docsFor, TASK_TEMPLATES } from '@/data/mockData'
-import { X } from 'lucide-react'
+import { newMatterZodSchema, newMatterYupSchema } from './todoList.validation'
+import { toast } from '@/components/ui/sonner'
+import { X, AlertCircle } from 'lucide-react'
 
 interface NewMatterModalProps {
   isOpen: boolean
@@ -30,6 +32,8 @@ export function NewMatterModal({
   const [hardVerified, setHardVerified] = useState(false)
   const [overview, setOverview] = useState('')
   const [engagementConfirmed, setEngagementConfirmed] = useState(true)
+  const [validationErrors, setValidationErrors] = useState<string[]>([])
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
 
   if (!isOpen) return null
 
@@ -44,11 +48,65 @@ export function NewMatterModal({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    if (!engagementConfirmed) {
-      return alert('Please confirm client engagement before opening the matter.')
+    setValidationErrors([])
+    setFieldErrors({})
+
+    const candidateData = {
+      clientId,
+      type,
+      owner,
+      retainedDate: retainedDate.trim(),
+      firstActionDue: firstActionDue.trim()
     }
+
+    // 1. Zod Validation
+    const zodResult = newMatterZodSchema.safeParse(candidateData)
+    if (!zodResult.success) {
+      const errMap: Record<string, string> = {}
+      zodResult.error.issues.forEach((issue) => {
+        const key = issue.path[0] as string
+        if (key && !errMap[key]) {
+          errMap[key] = issue.message
+        }
+      })
+      if (!engagementConfirmed) {
+        errMap.engagement = 'Please confirm client engagement'
+      }
+      if (hardDeadline && (!hardSource.trim() || !hardVerified)) {
+        errMap.hardDeadline = 'Please provide the deadline source correspondence and confirm verification'
+      }
+      setFieldErrors(errMap)
+      const errMsgs = zodResult.error.issues.map((i) => i.message)
+      if (errMap.engagement && !errMsgs.includes(errMap.engagement)) errMsgs.push(errMap.engagement)
+      if (errMap.hardDeadline && !errMsgs.includes(errMap.hardDeadline)) errMsgs.push(errMap.hardDeadline)
+      setValidationErrors(errMsgs)
+      toast.error(errMsgs[0] || 'Please complete all required fields')
+      return
+    }
+
+    if (!engagementConfirmed) {
+      setFieldErrors({ engagement: 'Please confirm client engagement before opening the matter' })
+      setValidationErrors(['Please confirm client engagement before opening the matter'])
+      toast.error('Please confirm client engagement')
+      return
+    }
+
     if (hardDeadline && (!hardSource.trim() || !hardVerified)) {
-      return alert('Please provide the deadline source correspondence and confirm verification.')
+      setFieldErrors({ hardDeadline: 'Please provide the deadline source correspondence and confirm verification' })
+      setValidationErrors(['Please provide the deadline source correspondence and confirm verification'])
+      toast.error('Please verify the legal deadline')
+      return
+    }
+
+    // 2. Yup Validation
+    try {
+      newMatterYupSchema.validateSync(candidateData, { abortEarly: false })
+    } catch (err: any) {
+      if (err.errors) {
+        setValidationErrors(err.errors)
+        toast.error(err.errors[0])
+        return
+      }
     }
 
     const newId = `NR-260${String(matters.length + 1).padStart(2, '0')}`
@@ -131,15 +189,35 @@ export function NewMatterModal({
           </button>
         </div>
 
+        {/* Validation Errors */}
+        {validationErrors.length > 0 && (
+          <div className="mx-4 sm:mx-6 mt-4 p-3 bg-red-50 border border-red-200 rounded-md text-red-800 text-[12.5px] flex items-start gap-2">
+            <AlertCircle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
+            <div>
+              <div className="font-semibold">Please fix validation errors:</div>
+              <ul className="list-disc list-inside mt-0.5 space-y-0.5 text-[12px]">
+                {validationErrors.map((msg, idx) => (
+                  <li key={idx}>{msg}</li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        )}
+
         {/* Form Body */}
-        <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-4 overflow-y-auto flex-1 text-[13.5px]">
+        <form noValidate onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-4 overflow-y-auto flex-1 text-[13.5px]">
           {/* Client Selection */}
           <div>
             <label className="block font-semibold text-[#202d2d] mb-1">Client</label>
             <select
               value={clientId}
-              onChange={(e) => setClientId(e.target.value)}
-              className="w-full p-2 border border-[#cbd5d1] rounded-md bg-white outline-none"
+              onChange={(e) => {
+                setClientId(e.target.value)
+                if (fieldErrors.clientId) setFieldErrors((p) => ({ ...p, clientId: '' }))
+              }}
+              className={`w-full p-2 border rounded-md bg-white outline-none transition-colors ${
+                fieldErrors.clientId ? 'border-red-500 bg-red-50/20' : 'border-[#cbd5d1]'
+              }`}
             >
               {clients.map((c) => (
                 <option key={c.id} value={c.id}>
@@ -147,6 +225,11 @@ export function NewMatterModal({
                 </option>
               ))}
             </select>
+            {fieldErrors.clientId && (
+              <p className="text-[12px] text-red-600 mt-1 font-medium flex items-center gap-1">
+                <span>•</span> {fieldErrors.clientId}
+              </p>
+            )}
           </div>
 
           {/* Matter Type & Case Manager */}
@@ -187,26 +270,44 @@ export function NewMatterModal({
               <label className="block font-semibold text-[#202d2d] mb-1">Date Retained</label>
               <input
                 type="date"
-                required
                 value={retainedDate}
-                onChange={(e) => setRetainedDate(e.target.value)}
-                className="w-full p-2 border border-[#cbd5d1] rounded-md outline-none"
+                onChange={(e) => {
+                  setRetainedDate(e.target.value)
+                  if (fieldErrors.retainedDate) setFieldErrors((p) => ({ ...p, retainedDate: '' }))
+                }}
+                className={`w-full p-2 border rounded-md outline-none transition-colors ${
+                  fieldErrors.retainedDate ? 'border-red-500 bg-red-50/20' : 'border-[#cbd5d1]'
+                }`}
               />
+              {fieldErrors.retainedDate && (
+                <p className="text-[12px] text-red-600 mt-1 font-medium flex items-center gap-1">
+                  <span>•</span> {fieldErrors.retainedDate}
+                </p>
+              )}
             </div>
             <div>
               <label className="block font-semibold text-[#202d2d] mb-1">First Action Due</label>
               <input
                 type="date"
-                required
                 value={firstActionDue}
-                onChange={(e) => setFirstActionDue(e.target.value)}
-                className="w-full p-2 border border-[#cbd5d1] rounded-md outline-none"
+                onChange={(e) => {
+                  setFirstActionDue(e.target.value)
+                  if (fieldErrors.firstActionDue) setFieldErrors((p) => ({ ...p, firstActionDue: '' }))
+                }}
+                className={`w-full p-2 border rounded-md outline-none transition-colors ${
+                  fieldErrors.firstActionDue ? 'border-red-500 bg-red-50/20' : 'border-[#cbd5d1]'
+                }`}
               />
+              {fieldErrors.firstActionDue && (
+                <p className="text-[12px] text-red-600 mt-1 font-medium flex items-center gap-1">
+                  <span>•</span> {fieldErrors.firstActionDue}
+                </p>
+              )}
             </div>
           </div>
 
           {/* Optional Hard Deadline */}
-          <div className="p-3 bg-[#fffaf5] border border-[#f3d9c3] rounded-lg space-y-2.5">
+          <div className={`p-3 border rounded-lg space-y-2.5 transition-colors ${fieldErrors.hardDeadline ? 'border-red-300 bg-red-50/30' : 'bg-[#fffaf5] border-[#f3d9c3]'}`}>
             <div className="text-[12.5px] font-bold text-[#8a4e26]">Hard Legal Deadline (if verified)</div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
               <div>
@@ -214,7 +315,10 @@ export function NewMatterModal({
                 <input
                   type="date"
                   value={hardDeadline}
-                  onChange={(e) => setHardDeadline(e.target.value)}
+                  onChange={(e) => {
+                    setHardDeadline(e.target.value)
+                    if (fieldErrors.hardDeadline) setFieldErrors((p) => ({ ...p, hardDeadline: '' }))
+                  }}
                   className="w-full p-1.5 border border-[#cbd5d1] rounded-md bg-white text-[12.5px]"
                 />
               </div>
@@ -224,7 +328,10 @@ export function NewMatterModal({
                   type="text"
                   placeholder="e.g. Officer letter, notice of appeal"
                   value={hardSource}
-                  onChange={(e) => setHardSource(e.target.value)}
+                  onChange={(e) => {
+                    setHardSource(e.target.value)
+                    if (fieldErrors.hardDeadline) setFieldErrors((p) => ({ ...p, hardDeadline: '' }))
+                  }}
                   className="w-full p-1.5 border border-[#cbd5d1] rounded-md bg-white text-[12.5px]"
                 />
               </div>
@@ -234,10 +341,18 @@ export function NewMatterModal({
                 <input
                   type="checkbox"
                   checked={hardVerified}
-                  onChange={(e) => setHardVerified(e.target.checked)}
+                  onChange={(e) => {
+                    setHardVerified(e.target.checked)
+                    if (fieldErrors.hardDeadline) setFieldErrors((p) => ({ ...p, hardDeadline: '' }))
+                  }}
                 />
                 <span>Hard deadline checked and verified against source correspondence</span>
               </label>
+            )}
+            {fieldErrors.hardDeadline && (
+              <p className="text-[12px] text-red-600 mt-1 font-medium flex items-center gap-1">
+                <span>•</span> {fieldErrors.hardDeadline}
+              </p>
             )}
           </div>
 
@@ -246,7 +361,6 @@ export function NewMatterModal({
             <label className="block font-semibold text-[#202d2d] mb-1">Case Overview</label>
             <textarea
               rows={3}
-              required
               value={overview}
               onChange={(e) => setOverview(e.target.value)}
               placeholder="Client instructions, background facts, and application pathway..."
@@ -255,15 +369,24 @@ export function NewMatterModal({
           </div>
 
           {/* Engagement confirmed check */}
-          <label className="flex items-center gap-2 text-[12.5px] text-[#202d2d] font-semibold cursor-pointer">
-            <input
-              type="checkbox"
-              required
-              checked={engagementConfirmed}
-              onChange={(e) => setEngagementConfirmed(e.target.checked)}
-            />
-            <span>Engagement confirmed & retainer executed in separate system</span>
-          </label>
+          <div className="space-y-1">
+            <label className="flex items-center gap-2 text-[12.5px] text-[#202d2d] font-semibold cursor-pointer">
+              <input
+                type="checkbox"
+                checked={engagementConfirmed}
+                onChange={(e) => {
+                  setEngagementConfirmed(e.target.checked)
+                  if (fieldErrors.engagement) setFieldErrors((p) => ({ ...p, engagement: '' }))
+                }}
+              />
+              <span>Engagement confirmed & retainer executed in separate system</span>
+            </label>
+            {fieldErrors.engagement && (
+              <p className="text-[12px] text-red-600 font-medium flex items-center gap-1">
+                <span>•</span> {fieldErrors.engagement}
+              </p>
+            )}
+          </div>
 
           {/* Action buttons */}
           <div className="pt-3 border-t border-[#edf0ee] flex items-center justify-end gap-2.5">

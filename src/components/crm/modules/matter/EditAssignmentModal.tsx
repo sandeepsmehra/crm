@@ -1,7 +1,9 @@
 import React, { useState } from 'react'
 import { Matter, BallHolder } from '@/types/crm'
 import { STAFF_MEMBERS } from '@/data/mockData'
-import { X } from 'lucide-react'
+import { X, AlertCircle } from 'lucide-react'
+import { toast } from '@/components/ui/sonner'
+import { editAssignmentModalZodSchema } from './matter.validation'
 
 interface EditAssignmentModalProps {
   isOpen: boolean
@@ -22,6 +24,7 @@ export function EditAssignmentModal({
   const [ball, setBall] = useState<BallHolder>(matter?.ball || 'Case Manager')
   const [next, setNext] = useState(matter?.next || '')
   const [due, setDue] = useState(matter?.due || '')
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
 
   if (!isOpen || !matter) return null
 
@@ -34,7 +37,29 @@ export function EditAssignmentModal({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    if (!next.trim()) return alert('Please enter the next action.')
+
+    const parseResult = editAssignmentModalZodSchema.safeParse({
+      owner,
+      ball,
+      next: next.trim(),
+      due
+    })
+
+    if (!parseResult.success) {
+      const newErrors: Record<string, string> = {}
+      parseResult.error.issues.forEach((err) => {
+        const fieldName = err.path[0] as string
+        if (fieldName && !newErrors[fieldName]) {
+          newErrors[fieldName] = err.message
+        }
+      })
+      setFieldErrors(newErrors)
+      const firstMsg = parseResult.error.issues[0]?.message || 'Please check assignment fields'
+      toast.error(firstMsg)
+      return
+    }
+
+    setFieldErrors({})
 
     const oldStr = `${matter.owner} / ${matter.ball} / ${matter.next} / ${matter.due}`
     const newStr = `${owner} / ${ball} / ${next.trim()} / ${due}`
@@ -70,12 +95,29 @@ export function EditAssignmentModal({
         </div>
 
         {/* Form Body */}
-        <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-4 overflow-y-auto flex-1 text-[13.5px]">
+        <form noValidate onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-4 overflow-y-auto flex-1 text-[13.5px]">
+          {Object.keys(fieldErrors).length > 0 && (
+            <div className="p-3 bg-red-50 border border-red-200 rounded-lg flex items-start gap-2.5 text-red-700">
+              <AlertCircle className="w-4 h-4 text-red-500 mt-0.5 shrink-0" />
+              <div className="text-[12px] leading-snug">
+                <span className="font-semibold">Please fix the following validation errors:</span>
+                <ul className="list-disc list-inside mt-1 space-y-0.5">
+                  {Object.values(fieldErrors).map((msg, idx) => (
+                    <li key={idx}>{msg}</li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          )}
+
           <div>
             <label className="block font-semibold text-[#202d2d] mb-1">Case Manager</label>
             <select
               value={owner}
-              onChange={(e) => setOwner(e.target.value)}
+              onChange={(e) => {
+                setOwner(e.target.value)
+                if (fieldErrors.owner) setFieldErrors((prev) => ({ ...prev, owner: '' }))
+              }}
               className="w-full p-2 border border-[#cbd5d1] rounded-md bg-white outline-none font-medium"
             >
               {STAFF_MEMBERS.map((s) => (
@@ -90,7 +132,10 @@ export function EditAssignmentModal({
             <label className="block font-semibold text-[#202d2d] mb-1">Who has the ball?</label>
             <select
               value={ball}
-              onChange={(e) => setBall(e.target.value as BallHolder)}
+              onChange={(e) => {
+                setBall(e.target.value as BallHolder)
+                if (fieldErrors.ball) setFieldErrors((prev) => ({ ...prev, ball: '' }))
+              }}
               className="w-full p-2 border border-[#cbd5d1] rounded-md bg-white outline-none font-medium"
             >
               <option value="Case Manager">Case Manager (Staff working)</option>
@@ -106,22 +151,37 @@ export function EditAssignmentModal({
             <label className="block font-semibold text-[#202d2d] mb-1">Next Action *</label>
             <input
               type="text"
-              required
               value={next}
-              onChange={(e) => setNext(e.target.value)}
-              className="w-full p-2 border border-[#cbd5d1] rounded-md outline-none focus:border-[#246b54]"
+              onChange={(e) => {
+                setNext(e.target.value)
+                if (fieldErrors.next) setFieldErrors((prev) => ({ ...prev, next: '' }))
+              }}
+              placeholder="e.g. Draft submission letter and checklist"
+              className={`w-full p-2 border ${
+                fieldErrors.next ? 'border-red-500 ring-1 ring-red-500' : 'border-[#cbd5d1]'
+              } rounded-md outline-none focus:border-[#246b54]`}
             />
+            {fieldErrors.next && (
+              <p className="mt-1 text-[11.5px] text-red-600 font-medium">⚠️ {fieldErrors.next}</p>
+            )}
           </div>
 
           <div>
-            <label className="block font-semibold text-[#202d2d] mb-1">Due / Follow-up Date</label>
+            <label className="block font-semibold text-[#202d2d] mb-1">Due / Follow-up Date *</label>
             <input
               type="date"
-              required
               value={due}
-              onChange={(e) => setDue(e.target.value)}
-              className="w-full p-2 border border-[#cbd5d1] rounded-md outline-none"
+              onChange={(e) => {
+                setDue(e.target.value)
+                if (fieldErrors.due) setFieldErrors((prev) => ({ ...prev, due: '' }))
+              }}
+              className={`w-full p-2 border ${
+                fieldErrors.due ? 'border-red-500 ring-1 ring-red-500' : 'border-[#cbd5d1]'
+              } rounded-md outline-none`}
             />
+            {fieldErrors.due && (
+              <p className="mt-1 text-[11.5px] text-red-600 font-medium">⚠️ {fieldErrors.due}</p>
+            )}
           </div>
 
           <div className="pt-3 border-t border-[#edf0ee] flex items-center justify-end gap-2.5">

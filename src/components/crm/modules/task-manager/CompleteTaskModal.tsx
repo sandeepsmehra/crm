@@ -19,15 +19,18 @@ export function CompleteTaskModal({
 }: CompleteTaskModalProps) {
   const [result, setResult] = useState('')
   const [completedBy, setCompletedBy] = useState(task?.assignedTo || STAFF_MEMBERS[0])
+  const [resultError, setResultError] = useState('')
 
   if (!isOpen || !task) return null
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (!result.trim()) {
+      setResultError('Please enter the action taken to complete this task')
       toast.error('Please enter the action taken to complete this task')
       return
     }
+    setResultError('')
     onFinish(task.id, result.trim(), completedBy)
     toast.success(`Task completed by ${completedBy}`)
     onClose()
@@ -53,7 +56,7 @@ export function CompleteTaskModal({
         </div>
 
         {/* Form Body */}
-        <form onSubmit={handleSubmit} className="p-5 space-y-4 overflow-y-auto flex-1 text-[13.5px]">
+        <form noValidate onSubmit={handleSubmit} className="p-5 space-y-4 overflow-y-auto flex-1 text-[13.5px]">
           <div className="p-3 bg-[#f8faf9] border border-[#edf0ee] rounded-lg">
             <span className="text-[11px] font-bold uppercase tracking-wider text-[#677472]">Task Description</span>
             <p className="font-semibold text-[#202d2d] mt-1">{task.text}</p>
@@ -70,12 +73,23 @@ export function CompleteTaskModal({
             </label>
             <textarea
               rows={3}
-              required
               value={result}
-              onChange={(e) => setResult(e.target.value)}
+              onChange={(e) => {
+                setResult(e.target.value)
+                if (resultError) setResultError('')
+              }}
               placeholder="e.g. Called client, explained processing timeline, updated notes."
-              className="w-full p-2.5 border border-[#cbd5d1] rounded-md outline-none focus:border-[#246b54]"
+              className={`w-full p-2.5 border rounded-md outline-none transition-colors ${
+                resultError
+                  ? 'border-red-500 bg-red-50/20 focus:border-red-500'
+                  : 'border-[#cbd5d1] focus:border-[#246b54]'
+              }`}
             />
+            {resultError && (
+              <p className="text-[12px] text-red-600 mt-1 font-medium flex items-center gap-1">
+                <span>•</span> {resultError}
+              </p>
+            )}
           </div>
 
           <div>

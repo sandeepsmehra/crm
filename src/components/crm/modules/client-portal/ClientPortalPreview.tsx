@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { Matter } from '@/types/crm'
 import { Upload, Send } from 'lucide-react'
+import { toast } from '@/components/ui/sonner'
 
 interface ClientPortalPreviewProps {
   matters: Matter[]
@@ -53,7 +54,7 @@ export function ClientPortalPreview({
       history: qHistory,
       married: qMarried
     })
-    alert('Your questionnaire answers have been saved for your legal team to verify.')
+    toast.success('Your questionnaire answers have been saved for your legal team to verify.')
   }
 
   return (
@@ -143,7 +144,7 @@ export function ClientPortalPreview({
       {/* Questionnaire Form */}
       <div className="bg-white border border-[#dfe5e3] rounded-xl p-6 shadow-xs space-y-4">
         <h3 className="text-lg font-bold text-[#202d2d]">Background Questionnaire</h3>
-        <form onSubmit={handleSaveQ} className="space-y-4 text-[13.5px]">
+        <form noValidate onSubmit={handleSaveQ} className="space-y-4 text-[13.5px]">
           <div>
             <label className="block font-semibold text-[#202d2d] mb-1">
               Previous applications or refusals

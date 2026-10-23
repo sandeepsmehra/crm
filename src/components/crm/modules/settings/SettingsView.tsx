@@ -16,6 +16,7 @@ type SettingsTab = 'Access' | 'Import' | 'Audit History' | 'Recovery Points' | '
 export function SettingsView() {
   const [activeTab, setActiveTab] = useState<SettingsTab>('Access')
   const [staffEmail, setStaffEmail] = useState('')
+  const [emailError, setEmailError] = useState('')
   const [staffRole, setStaffRole] = useState<'case_manager' | 'reception' | 'viewer' | 'owner'>('case_manager')
   const [usersList, setUsersList] = useState<UserAccessItem[]>([
     { email: 'seedy@sites.test', role: 'owner', status: 'Enabled', signedIn: true }
@@ -36,7 +37,11 @@ export function SettingsView() {
 
   const handleAddStaff = (e: React.FormEvent) => {
     e.preventDefault()
-    if (!staffEmail.trim()) return
+    if (!staffEmail.trim()) {
+      setEmailError('Staff email is required')
+      toast.error('Staff email is required')
+      return
+    }
 
     const candidate = {
       email: staffEmail.trim(),
@@ -47,7 +52,9 @@ export function SettingsView() {
     // Zod validation
     const zodResult = staffAccessZodSchema.safeParse(candidate)
     if (!zodResult.success) {
-      toast.error(zodResult.error.issues[0]?.message || 'Invalid email')
+      const msg = zodResult.error.issues[0]?.message || 'Invalid email address'
+      setEmailError(msg)
+      toast.error(msg)
       return
     }
 
@@ -56,11 +63,13 @@ export function SettingsView() {
       staffAccessYupSchema.validateSync(candidate, { abortEarly: false })
     } catch (err: any) {
       if (err.errors) {
+        setEmailError(err.errors[0])
         toast.error(err.errors[0])
         return
       }
     }
 
+    setEmailError('')
     setUsersList([...usersList, { email: candidate.email, role: candidate.role, status: 'Enabled', signedIn: false }])
     setStaffEmail('')
     toast.success(`Staff access updated for ${candidate.email}`)
@@ -116,11 +125,15 @@ export function SettingsView() {
       {activeTab === 'Access' && (
         <AccessTab
           staffEmail={staffEmail}
-          onStaffEmailChange={setStaffEmail}
+          onStaffEmailChange={(val) => {
+            setStaffEmail(val)
+            if (emailError) setEmailError('')
+          }}
           staffRole={staffRole}
           onStaffRoleChange={setStaffRole}
           usersList={usersList}
           onAddStaff={handleAddStaff}
+          emailError={emailError}
         />
       )}
 

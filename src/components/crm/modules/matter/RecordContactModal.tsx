@@ -1,7 +1,9 @@
 import React, { useState } from 'react'
 import { ContactLogEntry } from '@/types/crm'
 import { TODAY, STAFF_MEMBERS } from '@/data/mockData'
-import { X } from 'lucide-react'
+import { X, AlertCircle } from 'lucide-react'
+import { toast } from '@/components/ui/sonner'
+import { contactLogZodSchema } from './matter.validation'
 
 interface RecordContactModalProps {
   isOpen: boolean
@@ -24,12 +26,37 @@ export function RecordContactModal({
   const [person, setPerson] = useState(clientName || 'Client')
   const [staff, setStaff] = useState(defaultStaff || STAFF_MEMBERS[0])
   const [explanation, setExplanation] = useState('')
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
 
   if (!isOpen) return null
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    if (!explanation.trim()) return alert('Please enter contact explanation.')
+
+    const parseResult = contactLogZodSchema.safeParse({
+      date,
+      time,
+      method,
+      person: person.trim(),
+      staff,
+      explanation: explanation.trim()
+    })
+
+    if (!parseResult.success) {
+      const newErrors: Record<string, string> = {}
+      parseResult.error.issues.forEach((err) => {
+        const fieldName = err.path[0] as string
+        if (fieldName && !newErrors[fieldName]) {
+          newErrors[fieldName] = err.message
+        }
+      })
+      setFieldErrors(newErrors)
+      const firstMsg = parseResult.error.issues[0]?.message || 'Please check contact record fields'
+      toast.error(firstMsg)
+      return
+    }
+
+    setFieldErrors({})
 
     const entry: ContactLogEntry = {
       id: `CLog-${Date.now().toString().slice(-4)}`,
@@ -65,27 +92,55 @@ export function RecordContactModal({
         </div>
 
         {/* Form Body */}
-        <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-4 overflow-y-auto flex-1 text-[13.5px]">
+        <form noValidate onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-4 overflow-y-auto flex-1 text-[13.5px]">
+          {Object.keys(fieldErrors).length > 0 && (
+            <div className="p-3 bg-red-50 border border-red-200 rounded-lg flex items-start gap-2.5 text-red-700">
+              <AlertCircle className="w-4 h-4 text-red-500 mt-0.5 shrink-0" />
+              <div className="text-[12px] leading-snug">
+                <span className="font-semibold">Please fix the following validation errors:</span>
+                <ul className="list-disc list-inside mt-1 space-y-0.5">
+                  {Object.values(fieldErrors).map((msg, idx) => (
+                    <li key={idx}>{msg}</li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          )}
+
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block font-semibold text-[#202d2d] mb-1">Contact Date</label>
+              <label className="block font-semibold text-[#202d2d] mb-1">Contact Date *</label>
               <input
                 type="date"
-                required
                 value={date}
-                onChange={(e) => setDate(e.target.value)}
-                className="w-full p-2 border border-[#cbd5d1] rounded-md outline-none"
+                onChange={(e) => {
+                  setDate(e.target.value)
+                  if (fieldErrors.date) setFieldErrors((prev) => ({ ...prev, date: '' }))
+                }}
+                className={`w-full p-2 border ${
+                  fieldErrors.date ? 'border-red-500 ring-1 ring-red-500' : 'border-[#cbd5d1]'
+                } rounded-md outline-none`}
               />
+              {fieldErrors.date && (
+                <p className="mt-1 text-[11.5px] text-red-600 font-medium">⚠️ {fieldErrors.date}</p>
+              )}
             </div>
             <div>
-              <label className="block font-semibold text-[#202d2d] mb-1">Time (Vancouver)</label>
+              <label className="block font-semibold text-[#202d2d] mb-1">Time (Vancouver) *</label>
               <input
                 type="time"
-                required
                 value={time}
-                onChange={(e) => setTime(e.target.value)}
-                className="w-full p-2 border border-[#cbd5d1] rounded-md outline-none"
+                onChange={(e) => {
+                  setTime(e.target.value)
+                  if (fieldErrors.time) setFieldErrors((prev) => ({ ...prev, time: '' }))
+                }}
+                className={`w-full p-2 border ${
+                  fieldErrors.time ? 'border-red-500 ring-1 ring-red-500' : 'border-[#cbd5d1]'
+                } rounded-md outline-none`}
               />
+              {fieldErrors.time && (
+                <p className="mt-1 text-[11.5px] text-red-600 font-medium">⚠️ {fieldErrors.time}</p>
+              )}
             </div>
           </div>
 
@@ -122,15 +177,22 @@ export function RecordContactModal({
           </div>
 
           <div>
-            <label className="block font-semibold text-[#202d2d] mb-1">Contact With</label>
+            <label className="block font-semibold text-[#202d2d] mb-1">Contact With *</label>
             <input
               type="text"
-              required
               value={person}
-              onChange={(e) => setPerson(e.target.value)}
+              onChange={(e) => {
+                setPerson(e.target.value)
+                if (fieldErrors.person) setFieldErrors((prev) => ({ ...prev, person: '' }))
+              }}
               placeholder="e.g. Client, Sponsor, Employer HR"
-              className="w-full p-2 border border-[#cbd5d1] rounded-md outline-none"
+              className={`w-full p-2 border ${
+                fieldErrors.person ? 'border-red-500 ring-1 ring-red-500' : 'border-[#cbd5d1]'
+              } rounded-md outline-none`}
             />
+            {fieldErrors.person && (
+              <p className="mt-1 text-[11.5px] text-red-600 font-medium">⚠️ {fieldErrors.person}</p>
+            )}
           </div>
 
           <div>
@@ -139,12 +201,19 @@ export function RecordContactModal({
             </label>
             <textarea
               rows={4}
-              required
               value={explanation}
-              onChange={(e) => setExplanation(e.target.value)}
+              onChange={(e) => {
+                setExplanation(e.target.value)
+                if (fieldErrors.explanation) setFieldErrors((prev) => ({ ...prev, explanation: '' }))
+              }}
               placeholder="Detailed summary of phone call or meeting discussion..."
-              className="w-full p-2.5 border border-[#cbd5d1] rounded-md outline-none focus:border-[#246b54]"
+              className={`w-full p-2.5 border ${
+                fieldErrors.explanation ? 'border-red-500 ring-1 ring-red-500' : 'border-[#cbd5d1]'
+              } rounded-md outline-none focus:border-[#246b54]`}
             />
+            {fieldErrors.explanation && (
+              <p className="mt-1 text-[11.5px] text-red-600 font-medium">⚠️ {fieldErrors.explanation}</p>
+            )}
           </div>
 
           <div className="pt-3 border-t border-[#edf0ee] flex items-center justify-end gap-2.5">

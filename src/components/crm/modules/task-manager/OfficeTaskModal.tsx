@@ -34,6 +34,7 @@ export function OfficeTaskModal({
     existingTask?.priority || 'Normal'
   )
   const [validationErrors, setValidationErrors] = useState<string[]>([])
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
 
   if (!isOpen) return null
 
@@ -42,13 +43,14 @@ export function OfficeTaskModal({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     setValidationErrors([])
+    setFieldErrors({})
 
     const candidateData = {
       text: text.trim(),
       taskCategory: category,
       assignedTo,
       assignedBy,
-      due,
+      due: due.trim(),
       priority,
       clientName: selectedClient?.name,
       clientPhone: selectedClient?.phone
@@ -57,9 +59,17 @@ export function OfficeTaskModal({
     // 1. Zod Validation
     const zodResult = officeTaskZodSchema.safeParse(candidateData)
     if (!zodResult.success) {
+      const errMap: Record<string, string> = {}
+      zodResult.error.issues.forEach((issue) => {
+        const key = issue.path[0] as string
+        if (key && !errMap[key]) {
+          errMap[key] = issue.message
+        }
+      })
+      setFieldErrors(errMap)
       const errMsgs = zodResult.error.issues.map((i) => i.message)
       setValidationErrors(errMsgs)
-      toast.error(errMsgs[0] || 'Validation error')
+      toast.error(errMsgs[0] || 'Please complete all required fields')
       return
     }
 
@@ -137,7 +147,7 @@ export function OfficeTaskModal({
         )}
 
         {/* Form Body */}
-        <form onSubmit={handleSubmit} className="p-5 space-y-4 overflow-y-auto flex-1 text-[13.5px]">
+        <form noValidate onSubmit={handleSubmit} className="p-5 space-y-4 overflow-y-auto flex-1 text-[13.5px]">
           <div>
             <label className="block font-semibold text-[#202d2d] mb-1">Task Category</label>
             <div className="flex flex-wrap gap-4">
@@ -185,11 +195,22 @@ export function OfficeTaskModal({
             <textarea
               rows={3}
               value={text}
-              onChange={(e) => setText(e.target.value)}
+              onChange={(e) => {
+                setText(e.target.value)
+                if (fieldErrors.text) setFieldErrors((p) => ({ ...p, text: '' }))
+              }}
               placeholder="What did the client ask, or what casework needs completion?"
-              className="w-full p-2.5 border border-[#cbd5d1] rounded-md bg-white outline-none focus:border-[#246b54]"
-              required
+              className={`w-full p-2.5 border rounded-md bg-white outline-none transition-colors ${
+                fieldErrors.text
+                  ? 'border-red-500 bg-red-50/20 focus:border-red-500'
+                  : 'border-[#cbd5d1] focus:border-[#246b54]'
+              }`}
             />
+            {fieldErrors.text && (
+              <p className="text-[12px] text-red-600 mt-1 font-medium flex items-center gap-1">
+                <span>•</span> {fieldErrors.text}
+              </p>
+            )}
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -227,10 +248,21 @@ export function OfficeTaskModal({
               <input
                 type="date"
                 value={due}
-                onChange={(e) => setDue(e.target.value)}
-                className="w-full p-2 border border-[#cbd5d1] rounded-md bg-white outline-none focus:border-[#246b54]"
-                required
+                onChange={(e) => {
+                  setDue(e.target.value)
+                  if (fieldErrors.due) setFieldErrors((p) => ({ ...p, due: '' }))
+                }}
+                className={`w-full p-2 border rounded-md bg-white outline-none transition-colors ${
+                  fieldErrors.due
+                    ? 'border-red-500 bg-red-50/20 focus:border-red-500'
+                    : 'border-[#cbd5d1] focus:border-[#246b54]'
+                }`}
               />
+              {fieldErrors.due && (
+                <p className="text-[12px] text-red-600 mt-1 font-medium flex items-center gap-1">
+                  <span>•</span> {fieldErrors.due}
+                </p>
+              )}
             </div>
             <div>
               <label className="block font-semibold text-[#202d2d] mb-1">Call Time</label>

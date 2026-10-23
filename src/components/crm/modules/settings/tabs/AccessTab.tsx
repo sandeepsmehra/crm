@@ -14,6 +14,7 @@ interface AccessTabProps {
   onStaffRoleChange: (role: 'case_manager' | 'reception' | 'viewer' | 'owner') => void
   usersList: UserAccessItem[]
   onAddStaff: (e: React.FormEvent) => void
+  emailError?: string
 }
 
 export function AccessTab({
@@ -22,7 +23,8 @@ export function AccessTab({
   staffRole,
   onStaffRoleChange,
   usersList,
-  onAddStaff
+  onAddStaff,
+  emailError
 }: AccessTabProps) {
   return (
     <div className="space-y-6">
@@ -37,17 +39,23 @@ export function AccessTab({
 
       <div className="flex flex-col lg:flex-row items-start gap-12 pt-2">
         {/* Form */}
-        <form onSubmit={onAddStaff} className="w-full max-w-lg space-y-4">
+        <form noValidate onSubmit={onAddStaff} className="w-full max-w-lg space-y-4">
           <div>
             <label className="block text-sm font-semibold text-[#111827] mb-1.5">
-              Staff email
+              Staff email *
             </label>
             <input
               type="email"
               value={staffEmail}
               onChange={(e) => onStaffEmailChange(e.target.value)}
-              className="w-full bg-white border border-[#d1d5db] rounded-lg px-3.5 py-2.5 text-sm text-[#111827] outline-none focus:border-[#126b48]"
+              placeholder="e.g. staff@nationrise.ca"
+              className={`w-full bg-white border ${
+                emailError ? 'border-red-500 ring-1 ring-red-500' : 'border-[#d1d5db]'
+              } rounded-lg px-3.5 py-2.5 text-sm text-[#111827] outline-none focus:border-[#126b48]`}
             />
+            {emailError && (
+              <p className="mt-1 text-[12px] text-red-600 font-medium">⚠️ {emailError}</p>
+            )}
           </div>
 
           <div>

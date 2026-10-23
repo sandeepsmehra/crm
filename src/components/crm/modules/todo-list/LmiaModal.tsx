@@ -30,12 +30,14 @@ export function LmiaModal({
   const [owner, setOwner] = useState(existingLmia?.owner || STAFF_MEMBERS[0])
   const [status, setStatus] = useState(existingLmia?.status || 'Advertising')
   const [validationErrors, setValidationErrors] = useState<string[]>([])
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
 
   if (!isOpen) return null
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     setValidationErrors([])
+    setFieldErrors({})
 
     const candidateData = {
       company: company.trim(),
@@ -43,9 +45,9 @@ export function LmiaModal({
       noc: noc.trim(),
       wage: wage.trim(),
       stream,
-      jobBankDate,
-      adExpiryDate,
-      submissionTarget,
+      jobBankDate: jobBankDate.trim(),
+      adExpiryDate: adExpiryDate.trim(),
+      submissionTarget: submissionTarget.trim(),
       owner,
       status
     }
@@ -53,9 +55,17 @@ export function LmiaModal({
     // 1. Zod Validation
     const zodResult = lmiaZodSchema.safeParse(candidateData)
     if (!zodResult.success) {
+      const errMap: Record<string, string> = {}
+      zodResult.error.issues.forEach((issue) => {
+        const key = issue.path[0] as string
+        if (key && !errMap[key]) {
+          errMap[key] = issue.message
+        }
+      })
+      setFieldErrors(errMap)
       const errMsgs = zodResult.error.issues.map((i) => i.message)
       setValidationErrors(errMsgs)
-      toast.error(errMsgs[0] || 'Validation error')
+      toast.error(errMsgs[0] || 'Please complete all required fields')
       return
     }
 
@@ -116,17 +126,26 @@ export function LmiaModal({
         )}
 
         {/* Form Body */}
-        <form onSubmit={handleSubmit} className="p-5 space-y-4 overflow-y-auto flex-1 text-[13.5px]">
+        <form noValidate onSubmit={handleSubmit} className="p-5 space-y-4 overflow-y-auto flex-1 text-[13.5px]">
           <div>
             <label className="block font-semibold text-[#202d2d] mb-1">Employer / Company Name *</label>
             <input
               type="text"
-              required
               value={company}
-              onChange={(e) => setCompany(e.target.value)}
+              onChange={(e) => {
+                setCompany(e.target.value)
+                if (fieldErrors.company) setFieldErrors((p) => ({ ...p, company: '' }))
+              }}
               placeholder="e.g. Fraser Valley Foods Inc."
-              className="w-full p-2 border border-[#cbd5d1] rounded-md outline-none focus:border-[#246b54]"
+              className={`w-full p-2 border rounded-md outline-none transition-colors ${
+                fieldErrors.company ? 'border-red-500 bg-red-50/20' : 'border-[#cbd5d1] focus:border-[#246b54]'
+              }`}
             />
+            {fieldErrors.company && (
+              <p className="text-[12px] text-red-600 mt-1 font-medium flex items-center gap-1">
+                <span>•</span> {fieldErrors.company}
+              </p>
+            )}
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -134,23 +153,41 @@ export function LmiaModal({
               <label className="block font-semibold text-[#202d2d] mb-1">Position / Job Title *</label>
               <input
                 type="text"
-                required
                 value={position}
-                onChange={(e) => setPosition(e.target.value)}
+                onChange={(e) => {
+                  setPosition(e.target.value)
+                  if (fieldErrors.position) setFieldErrors((p) => ({ ...p, position: '' }))
+                }}
                 placeholder="e.g. Cook"
-                className="w-full p-2 border border-[#cbd5d1] rounded-md outline-none focus:border-[#246b54]"
+                className={`w-full p-2 border rounded-md outline-none transition-colors ${
+                  fieldErrors.position ? 'border-red-500 bg-red-50/20' : 'border-[#cbd5d1] focus:border-[#246b54]'
+                }`}
               />
+              {fieldErrors.position && (
+                <p className="text-[12px] text-red-600 mt-1 font-medium flex items-center gap-1">
+                  <span>•</span> {fieldErrors.position}
+                </p>
+              )}
             </div>
             <div>
               <label className="block font-semibold text-[#202d2d] mb-1">NOC Code *</label>
               <input
                 type="text"
-                required
                 value={noc}
-                onChange={(e) => setNoc(e.target.value)}
+                onChange={(e) => {
+                  setNoc(e.target.value)
+                  if (fieldErrors.noc) setFieldErrors((p) => ({ ...p, noc: '' }))
+                }}
                 placeholder="63200"
-                className="w-full p-2 border border-[#cbd5d1] rounded-md outline-none focus:border-[#246b54]"
+                className={`w-full p-2 border rounded-md outline-none transition-colors ${
+                  fieldErrors.noc ? 'border-red-500 bg-red-50/20' : 'border-[#cbd5d1] focus:border-[#246b54]'
+                }`}
               />
+              {fieldErrors.noc && (
+                <p className="text-[12px] text-red-600 mt-1 font-medium flex items-center gap-1">
+                  <span>•</span> {fieldErrors.noc}
+                </p>
+              )}
             </div>
           </div>
 
@@ -159,12 +196,21 @@ export function LmiaModal({
               <label className="block font-semibold text-[#202d2d] mb-1">Hourly Wage ($ CAD) *</label>
               <input
                 type="text"
-                required
                 value={wage}
-                onChange={(e) => setWage(e.target.value)}
+                onChange={(e) => {
+                  setWage(e.target.value)
+                  if (fieldErrors.wage) setFieldErrors((p) => ({ ...p, wage: '' }))
+                }}
                 placeholder="28.50"
-                className="w-full p-2 border border-[#cbd5d1] rounded-md outline-none focus:border-[#246b54]"
+                className={`w-full p-2 border rounded-md outline-none transition-colors ${
+                  fieldErrors.wage ? 'border-red-500 bg-red-50/20' : 'border-[#cbd5d1] focus:border-[#246b54]'
+                }`}
               />
+              {fieldErrors.wage && (
+                <p className="text-[12px] text-red-600 mt-1 font-medium flex items-center gap-1">
+                  <span>•</span> {fieldErrors.wage}
+                </p>
+              )}
             </div>
             <div>
               <label className="block font-semibold text-[#202d2d] mb-1">ESDC Stream</label>
@@ -187,34 +233,59 @@ export function LmiaModal({
               <label className="block font-semibold text-[#202d2d] mb-1">Job Bank Posted</label>
               <input
                 type="date"
-                required
                 value={jobBankDate}
                 onChange={(e) => {
                   setJobBankDate(e.target.value)
                   setAdExpiryDate(addDays(e.target.value, 28))
+                  if (fieldErrors.jobBankDate) setFieldErrors((p) => ({ ...p, jobBankDate: '' }))
                 }}
-                className="w-full p-2 border border-[#cbd5d1] rounded-md outline-none focus:border-[#246b54]"
+                className={`w-full p-2 border rounded-md outline-none transition-colors ${
+                  fieldErrors.jobBankDate ? 'border-red-500 bg-red-50/20' : 'border-[#cbd5d1] focus:border-[#246b54]'
+                }`}
               />
+              {fieldErrors.jobBankDate && (
+                <p className="text-[12px] text-red-600 mt-1 font-medium flex items-center gap-1">
+                  <span>•</span> {fieldErrors.jobBankDate}
+                </p>
+              )}
             </div>
             <div>
               <label className="block font-semibold text-[#202d2d] mb-1">28-day Ad Expiry</label>
               <input
                 type="date"
-                required
                 value={adExpiryDate}
-                onChange={(e) => setAdExpiryDate(e.target.value)}
-                className="w-full p-2 border border-[#cbd5d1] rounded-md outline-none focus:border-[#246b54]"
+                onChange={(e) => {
+                  setAdExpiryDate(e.target.value)
+                  if (fieldErrors.adExpiryDate) setFieldErrors((p) => ({ ...p, adExpiryDate: '' }))
+                }}
+                className={`w-full p-2 border rounded-md outline-none transition-colors ${
+                  fieldErrors.adExpiryDate ? 'border-red-500 bg-red-50/20' : 'border-[#cbd5d1] focus:border-[#246b54]'
+                }`}
               />
+              {fieldErrors.adExpiryDate && (
+                <p className="text-[12px] text-red-600 mt-1 font-medium flex items-center gap-1">
+                  <span>•</span> {fieldErrors.adExpiryDate}
+                </p>
+              )}
             </div>
             <div>
               <label className="block font-semibold text-[#202d2d] mb-1">Target Submission</label>
               <input
                 type="date"
-                required
                 value={submissionTarget}
-                onChange={(e) => setSubmissionTarget(e.target.value)}
-                className="w-full p-2 border border-[#cbd5d1] rounded-md outline-none focus:border-[#246b54]"
+                onChange={(e) => {
+                  setSubmissionTarget(e.target.value)
+                  if (fieldErrors.submissionTarget) setFieldErrors((p) => ({ ...p, submissionTarget: '' }))
+                }}
+                className={`w-full p-2 border rounded-md outline-none transition-colors ${
+                  fieldErrors.submissionTarget ? 'border-red-500 bg-red-50/20' : 'border-[#cbd5d1] focus:border-[#246b54]'
+                }`}
               />
+              {fieldErrors.submissionTarget && (
+                <p className="text-[12px] text-red-600 mt-1 font-medium flex items-center gap-1">
+                  <span>•</span> {fieldErrors.submissionTarget}
+                </p>
+              )}
             </div>
           </div>
 

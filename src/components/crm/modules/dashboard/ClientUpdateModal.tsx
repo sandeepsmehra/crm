@@ -32,6 +32,7 @@ export function ClientUpdateModal({
   const [method, setMethod] = useState<string>('')
   const [sentBy, setSentBy] = useState<string>('')
   const [validationErrors, setValidationErrors] = useState<string[]>([])
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
 
   // Initialize or reset form state when modal opens or initialUpdate changes
   useEffect(() => {
@@ -71,6 +72,7 @@ export function ClientUpdateModal({
         setSentBy('')
       }
       setValidationErrors([])
+      setFieldErrors({})
     }
   }, [isOpen, initialUpdate, initialMatterId, matters])
 
@@ -79,6 +81,13 @@ export function ClientUpdateModal({
   // Auto-fill application type if user picks a known client from matters
   const handleClientNameChange = (val: string) => {
     setClientName(val)
+    if (fieldErrors.clientName) {
+      setFieldErrors((prev) => {
+        const next = { ...prev }
+        delete next.clientName
+        return next
+      })
+    }
     const matched = matters.find((m) => m.name.toLowerCase() === val.trim().toLowerCase())
     if (matched && !applicationType) {
       setApplicationType(matched.type)
@@ -88,14 +97,15 @@ export function ClientUpdateModal({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     setValidationErrors([])
+    setFieldErrors({})
 
     const candidateData = {
-      date,
-      clientName: clientName.trim() || 'Client',
-      applicationType: applicationType.trim() || 'General Application',
+      date: date.trim(),
+      clientName: clientName.trim(),
+      applicationType: applicationType.trim() || undefined,
       updateType: updateType as any,
-      checkedBy: checkedBy || 'Not checked',
-      comments: comments.trim(),
+      checkedBy: checkedBy || undefined,
+      comments: comments.trim() || undefined,
       status,
       method: method || undefined,
       sentBy: sentBy || undefined
@@ -104,9 +114,17 @@ export function ClientUpdateModal({
     // 1. Zod Validation
     const zodResult = clientUpdateZodSchema.safeParse(candidateData)
     if (!zodResult.success) {
+      const errMap: Record<string, string> = {}
+      zodResult.error.issues.forEach((issue) => {
+        const key = issue.path[0] as string
+        if (key && !errMap[key]) {
+          errMap[key] = issue.message
+        }
+      })
+      setFieldErrors(errMap)
       const errMsgs = zodResult.error.issues.map((i) => i.message)
       setValidationErrors(errMsgs)
-      toast.error(errMsgs[0] || 'Validation error')
+      toast.error(errMsgs[0] || 'Please complete all required fields')
       return
     }
 
@@ -125,10 +143,10 @@ export function ClientUpdateModal({
       id: initialUpdate?.id || `UPD-${Date.now().toString().slice(-4)}`,
       date,
       clientName: candidateData.clientName,
-      applicationType: candidateData.applicationType,
+      applicationType: candidateData.applicationType || 'General Application',
       updateType: updateType as any,
-      checkedBy: candidateData.checkedBy,
-      comments: candidateData.comments,
+      checkedBy: candidateData.checkedBy || 'Not checked',
+      comments: candidateData.comments || '',
       status,
       actionStatus: status,
       method: method || undefined,
@@ -176,7 +194,7 @@ export function ClientUpdateModal({
         )}
 
         {/* Form Body */}
-        <form onSubmit={handleSubmit} className="px-6 sm:px-7 pt-3 pb-6 overflow-y-auto flex-1 text-[13.5px]">
+        <form noValidate onSubmit={handleSubmit} className="px-6 sm:px-7 pt-3 pb-6 overflow-y-auto flex-1 text-[13.5px]">
           {/* Row 1: Date & Client Name */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
             <div>
@@ -186,10 +204,27 @@ export function ClientUpdateModal({
               <input
                 type="date"
                 value={date}
-                onChange={(e) => setDate(e.target.value)}
-                className="w-full px-3 py-2 bg-white border border-[#d1d5db] rounded-md text-[13.5px] text-[#1c2826] outline-none focus:ring-1 focus:ring-[#9f5832] focus:border-[#9f5832]"
-                required
+                onChange={(e) => {
+                  setDate(e.target.value)
+                  if (fieldErrors.date) {
+                    setFieldErrors((prev) => {
+                      const next = { ...prev }
+                      delete next.date
+                      return next
+                    })
+                  }
+                }}
+                className={`w-full px-3 py-2 bg-white border rounded-md text-[13.5px] text-[#1c2826] outline-none transition-colors ${
+                  fieldErrors.date
+                    ? 'border-red-500 bg-red-50/20 focus:ring-1 focus:ring-red-500 focus:border-red-500'
+                    : 'border-[#d1d5db] focus:ring-1 focus:ring-[#9f5832] focus:border-[#9f5832]'
+                }`}
               />
+              {fieldErrors.date && (
+                <p className="text-[12px] text-red-600 mt-1 font-medium flex items-center gap-1">
+                  <span>•</span> {fieldErrors.date}
+                </p>
+              )}
             </div>
 
             <div>
@@ -201,10 +236,18 @@ export function ClientUpdateModal({
                 list="client-names-datalist"
                 value={clientName}
                 onChange={(e) => handleClientNameChange(e.target.value)}
-                placeholder=""
-                className="w-full px-3 py-2 bg-white border border-[#d1d5db] rounded-md text-[13.5px] text-[#1c2826] outline-none focus:ring-1 focus:ring-[#9f5832] focus:border-[#9f5832]"
-                required
+                placeholder="Enter or select client name"
+                className={`w-full px-3 py-2 bg-white border rounded-md text-[13.5px] text-[#1c2826] outline-none transition-colors ${
+                  fieldErrors.clientName
+                    ? 'border-red-500 bg-red-50/20 focus:ring-1 focus:ring-red-500 focus:border-red-500'
+                    : 'border-[#d1d5db] focus:ring-1 focus:ring-[#9f5832] focus:border-[#9f5832]'
+                }`}
               />
+              {fieldErrors.clientName && (
+                <p className="text-[12px] text-red-600 mt-1 font-medium flex items-center gap-1">
+                  <span>•</span> {fieldErrors.clientName}
+                </p>
+              )}
               <datalist id="client-names-datalist">
                 {matters.map((m) => (
                   <option key={m.id} value={m.name}>
@@ -237,8 +280,19 @@ export function ClientUpdateModal({
               <div className="relative">
                 <select
                   value={updateType}
-                  onChange={(e) => setUpdateType(e.target.value)}
-                  className="w-full appearance-none px-3 py-2 pr-9 bg-[#edf7f0] border border-[#c3e6cb] rounded-md text-[13.5px] font-medium text-[#166534] outline-none focus:ring-1 focus:ring-[#166534] cursor-pointer"
+                  onChange={(e) => {
+                    setUpdateType(e.target.value)
+                    if (fieldErrors.updateType) {
+                      setFieldErrors((prev) => {
+                        const next = { ...prev }
+                        delete next.updateType
+                        return next
+                      })
+                    }
+                  }}
+                  className={`w-full appearance-none px-3 py-2 pr-9 bg-[#edf7f0] border rounded-md text-[13.5px] font-medium text-[#166534] outline-none focus:ring-1 focus:ring-[#166534] cursor-pointer ${
+                    fieldErrors.updateType ? 'border-red-500' : 'border-[#c3e6cb]'
+                  }`}
                 >
                   <option value="Approved">Approved</option>
                   <option value="Refused">Refused</option>
@@ -251,6 +305,11 @@ export function ClientUpdateModal({
                 </select>
                 <ChevronDown className="w-4 h-4 text-[#166534] absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
               </div>
+              {fieldErrors.updateType && (
+                <p className="text-[12px] text-red-600 mt-1 font-medium flex items-center gap-1">
+                  <span>•</span> {fieldErrors.updateType}
+                </p>
+              )}
             </div>
           </div>
 

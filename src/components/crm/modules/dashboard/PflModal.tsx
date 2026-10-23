@@ -30,6 +30,7 @@ export function PflModal({
   const [requiredDocs, setRequiredDocs] = useState('')
   const [verifiedCheck, setVerifiedCheck] = useState(false)
   const [validationErrors, setValidationErrors] = useState<string[]>([])
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
 
   if (!isOpen) return null
 
@@ -38,11 +39,12 @@ export function PflModal({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     setValidationErrors([])
+    setFieldErrors({})
 
     const candidateData = {
       fileNumber: fileNumber.trim(),
-      clientName: selectedMatter ? selectedMatter.name : 'Client',
-      applicationType: selectedMatter ? selectedMatter.type : 'Work Permit',
+      clientName: selectedMatter ? selectedMatter.name : '',
+      applicationType: selectedMatter ? selectedMatter.type : '',
       category,
       actionRequired: actionRequired.trim(),
       receivedDate,
@@ -55,9 +57,30 @@ export function PflModal({
     // 1. Zod Validation
     const zodResult = pflZodSchema.safeParse(candidateData)
     if (!zodResult.success) {
+      const errMap: Record<string, string> = {}
+      zodResult.error.issues.forEach((issue) => {
+        const key = issue.path[0] as string
+        if (key && !errMap[key]) {
+          errMap[key] = issue.message
+        }
+      })
+      if (!verifiedCheck) {
+        errMap.verifiedCheck = 'Verification checkbox is required'
+      }
+      setFieldErrors(errMap)
       const errMsgs = zodResult.error.issues.map((i) => i.message)
+      if (!verifiedCheck && !errMsgs.includes('Verification checkbox is required')) {
+        errMsgs.push('Verification checkbox is required')
+      }
       setValidationErrors(errMsgs)
-      toast.error(errMsgs[0] || 'Validation error')
+      toast.error(errMsgs[0] || 'Please complete all required fields')
+      return
+    }
+
+    if (!verifiedCheck) {
+      setFieldErrors({ verifiedCheck: 'Verification checkbox is required' })
+      setValidationErrors(['Verification checkbox is required'])
+      toast.error('Please verify the deadline date')
       return
     }
 
@@ -128,7 +151,7 @@ export function PflModal({
         )}
 
         {/* Form Body */}
-        <form onSubmit={handleSubmit} className="p-5 space-y-4 overflow-y-auto flex-1 text-[13.5px]">
+        <form noValidate onSubmit={handleSubmit} className="p-5 space-y-4 overflow-y-auto flex-1 text-[13.5px]">
           <div>
             <label className="block font-semibold text-[#202d2d] mb-1">Related Application Matter</label>
             <select
@@ -157,11 +180,22 @@ export function PflModal({
               <input
                 type="text"
                 value={fileNumber}
-                onChange={(e) => setFileNumber(e.target.value)}
+                onChange={(e) => {
+                  setFileNumber(e.target.value)
+                  if (fieldErrors.fileNumber) setFieldErrors((p) => ({ ...p, fileNumber: '' }))
+                }}
                 placeholder="e.g. WP-2026-9018"
-                className="w-full p-2 border border-[#cbd5d1] rounded-md bg-white outline-none focus:border-[#246b54]"
-                required
+                className={`w-full p-2 border rounded-md bg-white outline-none transition-colors ${
+                  fieldErrors.fileNumber
+                    ? 'border-red-500 bg-red-50/20 focus:border-red-500'
+                    : 'border-[#cbd5d1] focus:border-[#246b54]'
+                }`}
               />
+              {fieldErrors.fileNumber && (
+                <p className="text-[12px] text-red-600 mt-1 font-medium flex items-center gap-1">
+                  <span>•</span> {fieldErrors.fileNumber}
+                </p>
+              )}
             </div>
             <div>
               <label className="block font-semibold text-[#202d2d] mb-1">Request Category</label>
@@ -184,11 +218,22 @@ export function PflModal({
             <textarea
               rows={2}
               value={actionRequired}
-              onChange={(e) => setActionRequired(e.target.value)}
+              onChange={(e) => {
+                setActionRequired(e.target.value)
+                if (fieldErrors.actionRequired) setFieldErrors((p) => ({ ...p, actionRequired: '' }))
+              }}
               placeholder="Summary of response needed and specific officer concerns..."
-              className="w-full p-2 border border-[#cbd5d1] rounded-md bg-white outline-none focus:border-[#246b54]"
-              required
+              className={`w-full p-2 border rounded-md bg-white outline-none transition-colors ${
+                fieldErrors.actionRequired
+                  ? 'border-red-500 bg-red-50/20 focus:border-red-500'
+                  : 'border-[#cbd5d1] focus:border-[#246b54]'
+              }`}
             />
+            {fieldErrors.actionRequired && (
+              <p className="text-[12px] text-red-600 mt-1 font-medium flex items-center gap-1">
+                <span>•</span> {fieldErrors.actionRequired}
+              </p>
+            )}
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -197,20 +242,42 @@ export function PflModal({
               <input
                 type="date"
                 value={receivedDate}
-                onChange={(e) => setReceivedDate(e.target.value)}
-                className="w-full p-2 border border-[#cbd5d1] rounded-md bg-white outline-none focus:border-[#246b54]"
-                required
+                onChange={(e) => {
+                  setReceivedDate(e.target.value)
+                  if (fieldErrors.receivedDate) setFieldErrors((p) => ({ ...p, receivedDate: '' }))
+                }}
+                className={`w-full p-2 border rounded-md bg-white outline-none transition-colors ${
+                  fieldErrors.receivedDate
+                    ? 'border-red-500 bg-red-50/20 focus:border-red-500'
+                    : 'border-[#cbd5d1] focus:border-[#246b54]'
+                }`}
               />
+              {fieldErrors.receivedDate && (
+                <p className="text-[12px] text-red-600 mt-1 font-medium flex items-center gap-1">
+                  <span>•</span> {fieldErrors.receivedDate}
+                </p>
+              )}
             </div>
             <div>
               <label className="block font-semibold text-[#202d2d] mb-1">Official Deadline</label>
               <input
                 type="date"
                 value={deadline}
-                onChange={(e) => setDeadline(e.target.value)}
-                className="w-full p-2 border border-[#cbd5d1] rounded-md bg-white outline-none focus:border-[#246b54]"
-                required
+                onChange={(e) => {
+                  setDeadline(e.target.value)
+                  if (fieldErrors.deadline) setFieldErrors((p) => ({ ...p, deadline: '' }))
+                }}
+                className={`w-full p-2 border rounded-md bg-white outline-none transition-colors ${
+                  fieldErrors.deadline
+                    ? 'border-red-500 bg-red-50/20 focus:border-red-500'
+                    : 'border-[#cbd5d1] focus:border-[#246b54]'
+                }`}
               />
+              {fieldErrors.deadline && (
+                <p className="text-[12px] text-red-600 mt-1 font-medium flex items-center gap-1">
+                  <span>•</span> {fieldErrors.deadline}
+                </p>
+              )}
             </div>
             <div>
               <label className="block font-semibold text-[#202d2d] mb-1">Assigned Staff</label>
@@ -248,19 +315,26 @@ export function PflModal({
             />
           </div>
 
-          <div className="p-3 bg-[#fff8eb] border border-[#f5dfa8] rounded-md">
+          <div className={`p-3 border rounded-md transition-colors ${fieldErrors.verifiedCheck ? 'border-red-300 bg-red-50/30' : 'border-[#f5dfa8] bg-[#fff8eb]'}`}>
             <label className="flex items-start gap-2 text-[12.5px] text-[#7d4e10] cursor-pointer">
               <input
                 type="checkbox"
                 checked={verifiedCheck}
-                onChange={(e) => setVerifiedCheck(e.target.checked)}
+                onChange={(e) => {
+                  setVerifiedCheck(e.target.checked)
+                  if (fieldErrors.verifiedCheck) setFieldErrors((p) => ({ ...p, verifiedCheck: '' }))
+                }}
                 className="mt-0.5 rounded text-[#a7653b] focus:ring-[#a7653b]"
-                required
               />
               <span>
                 <strong>Verified by RCIC / Case Manager:</strong> I have checked the deadline date directly on the IRCC or ESDC official letter.
               </span>
             </label>
+            {fieldErrors.verifiedCheck && (
+              <p className="text-[12px] text-red-600 mt-1 font-medium flex items-center gap-1">
+                <span>•</span> {fieldErrors.verifiedCheck}
+              </p>
+            )}
           </div>
 
           {/* Footer Buttons */}

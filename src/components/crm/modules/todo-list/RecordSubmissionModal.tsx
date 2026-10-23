@@ -26,15 +26,17 @@ export function RecordSubmissionModal({
   const [by, setBy] = useState(defaultOwner || STAFF_MEMBERS[0])
   const [confirmation, setConfirmation] = useState('Submission-Confirmation-Receipt.pdf')
   const [validationErrors, setValidationErrors] = useState<string[]>([])
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
 
   if (!isOpen) return null
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     setValidationErrors([])
+    setFieldErrors({})
 
     const candidateData = {
-      date,
+      date: date.trim(),
       portal,
       ref: ref.trim(),
       by,
@@ -44,9 +46,17 @@ export function RecordSubmissionModal({
     // 1. Zod Validation
     const zodResult = submissionZodSchema.safeParse(candidateData)
     if (!zodResult.success) {
+      const errMap: Record<string, string> = {}
+      zodResult.error.issues.forEach((issue) => {
+        const key = issue.path[0] as string
+        if (key && !errMap[key]) {
+          errMap[key] = issue.message
+        }
+      })
+      setFieldErrors(errMap)
       const errMsgs = zodResult.error.issues.map((i) => i.message)
       setValidationErrors(errMsgs)
-      toast.error(errMsgs[0] || 'Validation error')
+      toast.error(errMsgs[0] || 'Please complete all required fields')
       return
     }
 
@@ -101,16 +111,25 @@ export function RecordSubmissionModal({
         )}
 
         {/* Form Body */}
-        <form onSubmit={handleSubmit} className="p-5 space-y-4 overflow-y-auto flex-1 text-[13.5px]">
+        <form noValidate onSubmit={handleSubmit} className="p-5 space-y-4 overflow-y-auto flex-1 text-[13.5px]">
           <div>
             <label className="block font-semibold text-[#202d2d] mb-1">Submission Date</label>
             <input
               type="date"
-              required
               value={date}
-              onChange={(e) => setDate(e.target.value)}
-              className="w-full p-2 border border-[#cbd5d1] rounded-md outline-none focus:border-[#246b54]"
+              onChange={(e) => {
+                setDate(e.target.value)
+                if (fieldErrors.date) setFieldErrors((p) => ({ ...p, date: '' }))
+              }}
+              className={`w-full p-2 border rounded-md outline-none transition-colors ${
+                fieldErrors.date ? 'border-red-500 bg-red-50/20' : 'border-[#cbd5d1] focus:border-[#246b54]'
+              }`}
             />
+            {fieldErrors.date && (
+              <p className="text-[12px] text-red-600 mt-1 font-medium flex items-center gap-1">
+                <span>•</span> {fieldErrors.date}
+              </p>
+            )}
           </div>
 
           <div>
@@ -135,12 +154,21 @@ export function RecordSubmissionModal({
             </label>
             <input
               type="text"
-              required
               value={ref}
-              onChange={(e) => setRef(e.target.value)}
+              onChange={(e) => {
+                setRef(e.target.value)
+                if (fieldErrors.ref) setFieldErrors((p) => ({ ...p, ref: '' }))
+              }}
               placeholder="e.g. W309488102 or DEMO-2026-001"
-              className="w-full p-2 border border-[#cbd5d1] rounded-md outline-none focus:border-[#246b54]"
+              className={`w-full p-2 border rounded-md outline-none transition-colors ${
+                fieldErrors.ref ? 'border-red-500 bg-red-50/20' : 'border-[#cbd5d1] focus:border-[#246b54]'
+              }`}
             />
+            {fieldErrors.ref && (
+              <p className="text-[12px] text-red-600 mt-1 font-medium flex items-center gap-1">
+                <span>•</span> {fieldErrors.ref}
+              </p>
+            )}
           </div>
 
           <div>

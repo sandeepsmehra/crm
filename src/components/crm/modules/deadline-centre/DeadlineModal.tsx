@@ -2,7 +2,9 @@ import React, { useState } from 'react'
 import { DeadlineItem, DeadlineKind, Matter } from '@/types/crm'
 import { TODAY } from '@/data/mockData'
 import { addDays } from '@/lib/crmUtils'
-import { X } from 'lucide-react'
+import { X, AlertCircle } from 'lucide-react'
+import { toast } from '@/components/ui/sonner'
+import { deadlineZodSchema } from './deadlineCentre.validation'
 
 interface DeadlineModalProps {
   isOpen: boolean
@@ -27,13 +29,39 @@ export function DeadlineModal({
   const [zone, setZone] = useState('America/Vancouver')
   const [source, setSource] = useState('Internal target')
   const [verified, setVerified] = useState(false)
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
 
   if (!isOpen) return null
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    if (!label.trim()) return alert('Please enter deadline description.')
-    if (!verified) return alert('Please confirm date and time verification.')
+
+    const parseResult = deadlineZodSchema.safeParse({
+      matterId,
+      kind,
+      label: label.trim(),
+      date,
+      time,
+      zone,
+      source: source.trim(),
+      verified
+    })
+
+    if (!parseResult.success) {
+      const newErrors: Record<string, string> = {}
+      parseResult.error.issues.forEach((err) => {
+        const fieldName = err.path[0] as string
+        if (fieldName && !newErrors[fieldName]) {
+          newErrors[fieldName] = err.message
+        }
+      })
+      setFieldErrors(newErrors)
+      const firstMsg = parseResult.error.issues[0]?.message || 'Please correct deadline errors'
+      toast.error(firstMsg)
+      return
+    }
+
+    setFieldErrors({})
 
     const deadline: DeadlineItem = {
       kind,
@@ -69,13 +97,32 @@ export function DeadlineModal({
         </div>
 
         {/* Form Body */}
-        <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-4 overflow-y-auto flex-1 text-[13.5px]">
+        <form noValidate onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-4 overflow-y-auto flex-1 text-[13.5px]">
+          {Object.keys(fieldErrors).length > 0 && (
+            <div className="p-3 bg-red-50 border border-red-200 rounded-lg flex items-start gap-2.5 text-red-700">
+              <AlertCircle className="w-4 h-4 text-red-500 mt-0.5 shrink-0" />
+              <div className="text-[12px] leading-snug">
+                <span className="font-semibold">Please fix the following validation errors:</span>
+                <ul className="list-disc list-inside mt-1 space-y-0.5">
+                  {Object.values(fieldErrors).map((msg, idx) => (
+                    <li key={idx}>{msg}</li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          )}
+
           <div>
             <label className="block font-semibold text-[#202d2d] mb-1">Application Matter</label>
             <select
               value={matterId}
-              onChange={(e) => setMatterId(e.target.value)}
-              className="w-full p-2 border border-[#cbd5d1] rounded-md bg-white outline-none"
+              onChange={(e) => {
+                setMatterId(e.target.value)
+                if (fieldErrors.matterId) setFieldErrors((prev) => ({ ...prev, matterId: '' }))
+              }}
+              className={`w-full p-2 border ${
+                fieldErrors.matterId ? 'border-red-500 ring-1 ring-red-500' : 'border-[#cbd5d1]'
+              } rounded-md bg-white outline-none`}
             >
               {matters.map((m) => (
                 <option key={m.id} value={m.id}>
@@ -83,6 +130,9 @@ export function DeadlineModal({
                 </option>
               ))}
             </select>
+            {fieldErrors.matterId && (
+              <p className="mt-1 text-[11.5px] text-red-600 font-medium">⚠️ {fieldErrors.matterId}</p>
+            )}
           </div>
 
           <div>
@@ -102,24 +152,38 @@ export function DeadlineModal({
             <label className="block font-semibold text-[#202d2d] mb-1">Action / Deadline Description *</label>
             <input
               type="text"
-              required
               value={label}
-              onChange={(e) => setLabel(e.target.value)}
+              onChange={(e) => {
+                setLabel(e.target.value)
+                if (fieldErrors.label) setFieldErrors((prev) => ({ ...prev, label: '' }))
+              }}
               placeholder="e.g. RAD Record Perfection / Job Bank Ad Expiry"
-              className="w-full p-2 border border-[#cbd5d1] rounded-md outline-none focus:border-[#246b54]"
+              className={`w-full p-2 border ${
+                fieldErrors.label ? 'border-red-500 ring-1 ring-red-500' : 'border-[#cbd5d1]'
+              } rounded-md outline-none focus:border-[#246b54]`}
             />
+            {fieldErrors.label && (
+              <p className="mt-1 text-[11.5px] text-red-600 font-medium">⚠️ {fieldErrors.label}</p>
+            )}
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block font-semibold text-[#202d2d] mb-1">Due Date</label>
+              <label className="block font-semibold text-[#202d2d] mb-1">Due Date *</label>
               <input
                 type="date"
-                required
                 value={date}
-                onChange={(e) => setDate(e.target.value)}
-                className="w-full p-2 border border-[#cbd5d1] rounded-md outline-none"
+                onChange={(e) => {
+                  setDate(e.target.value)
+                  if (fieldErrors.date) setFieldErrors((prev) => ({ ...prev, date: '' }))
+                }}
+                className={`w-full p-2 border ${
+                  fieldErrors.date ? 'border-red-500 ring-1 ring-red-500' : 'border-[#cbd5d1]'
+                } rounded-md outline-none`}
               />
+              {fieldErrors.date && (
+                <p className="mt-1 text-[11.5px] text-red-600 font-medium">⚠️ {fieldErrors.date}</p>
+              )}
             </div>
             <div>
               <label className="block font-semibold text-[#202d2d] mb-1">Due Time</label>
@@ -154,15 +218,22 @@ export function DeadlineModal({
             </div>
           </div>
 
-          <label className="flex items-center gap-2 text-[12.5px] font-semibold text-[#202d2d] cursor-pointer">
-            <input
-              type="checkbox"
-              required
-              checked={verified}
-              onChange={(e) => setVerified(e.target.checked)}
-            />
-            <span>Date and time verified by the responsible staff member</span>
-          </label>
+          <div>
+            <label className="flex items-center gap-2 text-[12.5px] font-semibold text-[#202d2d] cursor-pointer">
+              <input
+                type="checkbox"
+                checked={verified}
+                onChange={(e) => {
+                  setVerified(e.target.checked)
+                  if (fieldErrors.verified) setFieldErrors((prev) => ({ ...prev, verified: '' }))
+                }}
+              />
+              <span>Date and time verified by the responsible staff member *</span>
+            </label>
+            {fieldErrors.verified && (
+              <p className="mt-1 text-[11.5px] text-red-600 font-medium">⚠️ {fieldErrors.verified}</p>
+            )}
+          </div>
 
           <div className="pt-3 border-t border-[#edf0ee] flex items-center justify-end gap-2.5">
             <button

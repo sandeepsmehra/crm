@@ -47,6 +47,7 @@ export function AppointmentModal({
   const [reminder, setReminder] = useState('Pending')
   const [followup, setFollowup] = useState('')
   const [validationErrors, setValidationErrors] = useState<string[]>([])
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
 
   useEffect(() => {
     if (existingAppointment) {
@@ -73,6 +74,8 @@ export function AppointmentModal({
       if (defaultDate) setDate(defaultDate)
       if (defaultTime) setTime(defaultTime)
     }
+    setValidationErrors([])
+    setFieldErrors({})
   }, [existingAppointment, defaultDate, defaultTime, clients, clientId])
 
   if (!isOpen) return null
@@ -98,17 +101,24 @@ export function AppointmentModal({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     setValidationErrors([])
+    setFieldErrors({})
 
     let resolvedClientId = clientId
     let createdClient: Client | undefined = undefined
 
     if (isNewClient) {
-      if (!newName.trim() || !newPhone.trim()) {
-        const msg = 'Please enter new client name and phone number'
-        setValidationErrors([msg])
-        toast.error(msg)
+      const inlineErrs: Record<string, string> = {}
+      if (!newName.trim()) inlineErrs.client = 'Client name is required'
+      if (!newPhone.trim()) inlineErrs.phone = 'Valid phone number is required'
+
+      if (Object.keys(inlineErrs).length > 0) {
+        setFieldErrors(inlineErrs)
+        const msgs = Object.values(inlineErrs)
+        setValidationErrors(msgs)
+        toast.error(msgs[0])
         return
       }
+
       resolvedClientId = `C-${clients.length + 1}`
       createdClient = {
         id: resolvedClientId,
@@ -121,16 +131,16 @@ export function AppointmentModal({
       }
     }
 
-    const clientName = createdClient?.name || clients.find((c) => c.id === resolvedClientId)?.name || 'Client'
-    const clientPhone = createdClient?.phone || clients.find((c) => c.id === resolvedClientId)?.phone || '604-555-0100'
+    const clientName = isNewClient ? (createdClient?.name || '') : (clients.find((c) => c.id === resolvedClientId)?.name || '')
+    const clientPhone = isNewClient ? (createdClient?.phone || '') : (clients.find((c) => c.id === resolvedClientId)?.phone || '')
 
     const candidateData = {
       client: clientName,
       phone: clientPhone,
-      date,
-      time,
-      consultant,
-      service,
+      date: date.trim(),
+      time: time.trim(),
+      consultant: consultant.trim(),
+      service: service.trim(),
       notes: notes.trim() || undefined,
       appointmentType: kind
     }
@@ -138,9 +148,17 @@ export function AppointmentModal({
     // 1. Zod Validation
     const zodResult = appointmentZodSchema.safeParse(candidateData)
     if (!zodResult.success) {
+      const errMap: Record<string, string> = {}
+      zodResult.error.issues.forEach((issue) => {
+        const key = issue.path[0] as string
+        if (key && !errMap[key]) {
+          errMap[key] = issue.message
+        }
+      })
+      setFieldErrors(errMap)
       const errMsgs = zodResult.error.issues.map((i) => i.message)
       setValidationErrors(errMsgs)
-      toast.error(errMsgs[0] || 'Validation error')
+      toast.error(errMsgs[0] || 'Please complete all required fields')
       return
     }
 
@@ -228,7 +246,7 @@ export function AppointmentModal({
         )}
 
         {/* Form Body */}
-        <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-4 overflow-y-auto flex-1 text-[13.5px]">
+        <form noValidate onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-4 overflow-y-auto flex-1 text-[13.5px]">
           {hasConflict && (
             <div className="p-3 bg-[#fff7ed] border border-[#fed7aa] rounded-lg text-[#9a3412] text-[12.5px] flex items-center gap-2">
               <AlertCircle className="w-4 h-4 shrink-0" />
@@ -249,9 +267,14 @@ export function AppointmentModal({
                 } else {
                   setIsNewClient(false)
                   setClientId(e.target.value)
+                  if (fieldErrors.client) setFieldErrors((p) => ({ ...p, client: '' }))
                 }
               }}
-              className="w-full p-2 border border-[#cbd5d1] rounded-md bg-white outline-none"
+              className={`w-full p-2 border rounded-md bg-white outline-none transition-colors ${
+                fieldErrors.client && !isNewClient
+                  ? 'border-red-500 bg-red-50/20 focus:border-red-500'
+                  : 'border-[#cbd5d1]'
+              }`}
             >
               <optgroup label="Existing Clients">
                 {clients.map((c) => (
@@ -262,6 +285,11 @@ export function AppointmentModal({
               </optgroup>
               <option value="NEW">+ Add a new client profile</option>
             </select>
+            {fieldErrors.client && !isNewClient && (
+              <p className="text-[12px] text-red-600 mt-1 font-medium flex items-center gap-1">
+                <span>•</span> {fieldErrors.client}
+              </p>
+            )}
           </div>
 
           {/* New Client Inline Fields */}
@@ -272,22 +300,44 @@ export function AppointmentModal({
                 <label className="block text-[12px] font-semibold text-[#202d2d] mb-1">Full Name *</label>
                 <input
                   type="text"
-                  required
                   value={newName}
-                  onChange={(e) => setNewName(e.target.value)}
-                  className="w-full p-2 border border-[#cbd5d1] rounded-md bg-white outline-none"
+                  onChange={(e) => {
+                    setNewName(e.target.value)
+                    if (fieldErrors.client) setFieldErrors((p) => ({ ...p, client: '' }))
+                  }}
+                  className={`w-full p-2 border rounded-md bg-white outline-none transition-colors ${
+                    fieldErrors.client
+                      ? 'border-red-500 bg-red-50/20 focus:border-red-500'
+                      : 'border-[#cbd5d1]'
+                  }`}
                 />
+                {fieldErrors.client && (
+                  <p className="text-[12px] text-red-600 mt-1 font-medium flex items-center gap-1">
+                    <span>•</span> {fieldErrors.client}
+                  </p>
+                )}
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                 <div>
                   <label className="block text-[12px] font-semibold text-[#202d2d] mb-1">Phone *</label>
                   <input
                     type="tel"
-                    required
                     value={newPhone}
-                    onChange={(e) => setNewPhone(e.target.value)}
-                    className="w-full p-2 border border-[#cbd5d1] rounded-md bg-white outline-none"
+                    onChange={(e) => {
+                      setNewPhone(e.target.value)
+                      if (fieldErrors.phone) setFieldErrors((p) => ({ ...p, phone: '' }))
+                    }}
+                    className={`w-full p-2 border rounded-md bg-white outline-none transition-colors ${
+                      fieldErrors.phone
+                        ? 'border-red-500 bg-red-50/20 focus:border-red-500'
+                        : 'border-[#cbd5d1]'
+                    }`}
                   />
+                  {fieldErrors.phone && (
+                    <p className="text-[12px] text-red-600 mt-1 font-medium flex items-center gap-1">
+                      <span>•</span> {fieldErrors.phone}
+                    </p>
+                  )}
                 </div>
                 <div>
                   <label className="block text-[12px] font-semibold text-[#202d2d] mb-1">Email</label>
@@ -340,21 +390,43 @@ export function AppointmentModal({
               <label className="block font-semibold text-[#202d2d] mb-1">Date</label>
               <input
                 type="date"
-                required
                 value={date}
-                onChange={(e) => setDate(e.target.value)}
-                className="w-full p-2 border border-[#cbd5d1] rounded-md outline-none"
+                onChange={(e) => {
+                  setDate(e.target.value)
+                  if (fieldErrors.date) setFieldErrors((p) => ({ ...p, date: '' }))
+                }}
+                className={`w-full p-2 border rounded-md outline-none transition-colors ${
+                  fieldErrors.date
+                    ? 'border-red-500 bg-red-50/20 focus:border-red-500'
+                    : 'border-[#cbd5d1]'
+                }`}
               />
+              {fieldErrors.date && (
+                <p className="text-[12px] text-red-600 mt-1 font-medium flex items-center gap-1">
+                  <span>•</span> {fieldErrors.date}
+                </p>
+              )}
             </div>
             <div>
               <label className="block font-semibold text-[#202d2d] mb-1">Start Time</label>
               <input
                 type="time"
-                required
                 value={time}
-                onChange={(e) => setTime(e.target.value)}
-                className="w-full p-2 border border-[#cbd5d1] rounded-md outline-none"
+                onChange={(e) => {
+                  setTime(e.target.value)
+                  if (fieldErrors.time) setFieldErrors((p) => ({ ...p, time: '' }))
+                }}
+                className={`w-full p-2 border rounded-md outline-none transition-colors ${
+                  fieldErrors.time
+                    ? 'border-red-500 bg-red-50/20 focus:border-red-500'
+                    : 'border-[#cbd5d1]'
+                }`}
               />
+              {fieldErrors.time && (
+                <p className="text-[12px] text-red-600 mt-1 font-medium flex items-center gap-1">
+                  <span>•</span> {fieldErrors.time}
+                </p>
+              )}
             </div>
             <div>
               <label className="block font-semibold text-[#202d2d] mb-1">Duration</label>
