@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
+import { Routes, Route, Navigate, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { 
   CRMView, 
   Matter, 
@@ -40,6 +41,88 @@ import { DeadlineCentreView, DeadlineModal } from '@/components/crm/modules/dead
 import { ClientPortalPreview } from '@/components/crm/modules/client-portal'
 import { SettingsView } from '@/components/crm/modules/settings'
 import { QuickMenuModal } from '@/components/crm/modules/common'
+
+export const VIEW_TO_PATH_MAP: Record<CRMView, string> = {
+  'Dashboard': '/dashboard',
+  'Task Manager': '/task-manager',
+  'Appointments': '/appointments',
+  'Clients': '/clients',
+  'To-Do List': '/todo-list',
+  'Matter': '/todo-list',
+  'Case Managers': '/case-managers',
+  'Retainers and Invoices': '/retainers-invoices',
+  'Deadline Centre': '/deadline-centre',
+  'Client Portal': '/client-portal',
+  'Settings': '/settings'
+}
+
+export function getCRMViewFromPath(pathname: string): CRMView {
+  const p = pathname.toLowerCase()
+  if (p.startsWith('/matter')) return 'Matter'
+  if (p === '/task-manager' || p === '/tasks') return 'Task Manager'
+  if (p === '/appointments') return 'Appointments'
+  if (p === '/clients') return 'Clients'
+  if (p === '/todo-list' || p === '/matters') return 'To-Do List'
+  if (p === '/case-managers') return 'Case Managers'
+  if (p === '/retainers-invoices' || p === '/retainers') return 'Retainers and Invoices'
+  if (p === '/deadline-centre' || p === '/deadlines') return 'Deadline Centre'
+  if (p === '/client-portal') return 'Client Portal'
+  if (p === '/settings') return 'Settings'
+  return 'Dashboard'
+}
+
+interface MatterRouteProps {
+  matters: Matter[]
+  clients: Client[]
+  onUpdateMatter: (m: Matter) => void
+  onEditAssignment: () => void
+  onRecordSubmission: () => void
+  onRecordContact: () => void
+  onAddDeadline: (matterId: string) => void
+  onAddGovtRequest: () => void
+  onPreviewClientPortal: (mid: string) => void
+  onNavigate: (path: string) => void
+}
+
+function MatterRouteWrapper({
+  matters,
+  clients,
+  onUpdateMatter,
+  onEditAssignment,
+  onRecordSubmission,
+  onRecordContact,
+  onAddDeadline,
+  onAddGovtRequest,
+  onPreviewClientPortal,
+  onNavigate
+}: MatterRouteProps) {
+  const { id } = useParams<{ id: string }>()
+  const targetMatter = matters.find((m) => m.id === id) || matters[0]
+  const targetClient = clients.find((c) => c.id === targetMatter?.clientId)
+
+  if (!targetMatter) {
+    return <Navigate to="/todo-list" replace />
+  }
+
+  return (
+    <MatterDetailView
+      matter={targetMatter}
+      client={targetClient}
+      onBack={() => onNavigate('/todo-list')}
+      onUpdateMatter={onUpdateMatter}
+      onEditAssignment={onEditAssignment}
+      onRecordSubmission={onRecordSubmission}
+      onRecordContact={onRecordContact}
+      onAddDeadline={() => onAddDeadline(targetMatter.id)}
+      onAddGovtRequest={onAddGovtRequest}
+      onPreviewClientPortal={(mid) => {
+        onPreviewClientPortal(mid)
+        onNavigate('/client-portal')
+      }}
+    />
+  )
+}
+
 
 export function App() {
   // Persistent State
@@ -84,7 +167,10 @@ export function App() {
   })
 
   // Navigation and Search State
-  const [currentView, setCurrentView] = useState<CRMView>('Dashboard')
+  const location = useLocation()
+  const navigate = useNavigate()
+  const currentView = useMemo(() => getCRMViewFromPath(location.pathname), [location.pathname])
+
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false)
   const [staffList, setStaffList] = useState<string[]>(STAFF_MEMBERS)
   const [selectedMatterId, setSelectedMatterId] = useState<string>(INITIAL_MATTERS[0].id)
@@ -157,7 +243,7 @@ export function App() {
       setAppointments(INITIAL_APPOINTMENTS)
       setOfficeTasks(INITIAL_OFFICE_TASKS)
       setPflRecords(INITIAL_PFL_RECORDS)
-      setCurrentView('Dashboard')
+      navigate('/dashboard')
       showToast('Fictional sample workspace reset.')
     }
   }
@@ -174,7 +260,7 @@ export function App() {
   // Handlers for Matters
   const handleOpenMatter = (id: string) => {
     setSelectedMatterId(id)
-    setCurrentView('Matter')
+    navigate(`/matter/${id}`)
   }
 
   const handleUpdateMatter = (updated: Matter) => {
@@ -185,7 +271,7 @@ export function App() {
   const handleCreateMatter = (newMatter: Matter) => {
     setMatters((prev) => [newMatter, ...prev])
     setSelectedMatterId(newMatter.id)
-    setCurrentView('Matter')
+    navigate(`/matter/${newMatter.id}`)
     showToast(`Matter opened and assigned to ${newMatter.owner}.`)
   }
 
@@ -490,7 +576,7 @@ export function App() {
       {/* Navigation Sidebar (Responsive drawer on mobile/tablet, fixed column on desktop) */}
       <NationriseSidebar
         currentView={currentView}
-        onViewChange={(v) => setCurrentView(v)}
+        onViewChange={(v) => navigate(VIEW_TO_PATH_MAP[v] || '/dashboard')}
         taskCount={activeTaskCount}
         deadlineCount={deadlineCount}
         retainedCount={retainedCount}
@@ -510,216 +596,255 @@ export function App() {
         <DemoBanner currentView={currentView} onResetDemo={handleResetDemo} />
 
         <main className="flex-1 overflow-y-auto px-4 sm:px-8 py-5 w-full mx-auto transition-all page-scroll">
-          {/* VIEW ROUTING */}
-          {currentView === 'Dashboard' && (
-            <DashboardView
-              matters={matters}
-              appointments={appointments}
-              officeTasks={officeTasks}
-              pflRecords={pflRecords}
-              staffList={STAFF_MEMBERS}
-              onOpenMatter={handleOpenMatter}
-              onNavigate={(v) => {
-                setCurrentView(v)
-              }}
-              onNewMatter={() => {
-                setNewMatterInitialClientId(undefined)
-                setIsNewMatterOpen(true)
-              }}
-              onNewPfl={() => setIsPflOpen(true)}
-            />
-          )}
+          {/* DECLARATIVE ROUTING FOR ALL CRM PAGES */}
+          <Routes>
+            <Route path="/" element={<Navigate to="/dashboard" replace />} />
 
-          {currentView === 'Task Manager' && (
-            <TaskManagerView
-              tasks={officeTasks}
-              clients={clients}
-              staffList={STAFF_MEMBERS}
-              onAssignTask={() => {
-                setSelectedTaskForEdit(null)
-                setIsOfficeTaskOpen(true)
-              }}
-              onCompleteTask={(task) => {
-                setTaskToComplete(task)
-                setIsCompleteTaskOpen(true)
-              }}
-              onReassignTask={handleReassignTask}
-              onChangeStatus={handleChangeTaskStatus}
-              onOpenClient={(cid) => {
-                const c = clients.find((x) => x.id === cid)
-                if (c) {
-                  setSelectedClientForProfile(c)
-                  setIsClientProfileOpen(true)
-                }
-              }}
+            <Route
+              path="/dashboard"
+              element={
+                <DashboardView
+                  matters={matters}
+                  appointments={appointments}
+                  officeTasks={officeTasks}
+                  pflRecords={pflRecords}
+                  staffList={STAFF_MEMBERS}
+                  onOpenMatter={handleOpenMatter}
+                  onNavigate={(v) => navigate(VIEW_TO_PATH_MAP[v as CRMView] || '/dashboard')}
+                  onNewMatter={() => {
+                    setNewMatterInitialClientId(undefined)
+                    setIsNewMatterOpen(true)
+                  }}
+                  onNewPfl={() => setIsPflOpen(true)}
+                />
+              }
             />
-          )}
 
-          {currentView === 'Appointments' && (
-            <AppointmentsView
-              appointments={appointments}
-              clients={clients}
-              onBookAppointment={(date, time) => {
-                setSelectedAppointmentForEdit(null)
-                setApptDefaultDate(date)
-                setApptDefaultTime(time)
-                setIsAppointmentModalOpen(true)
-              }}
-              onEditAppointment={(appt) => {
-                setSelectedAppointmentForEdit(appt)
-                setIsAppointmentModalOpen(true)
-              }}
-              onUpdateCell={handleUpdateAppointmentCell}
-              onMarkRetained={handleMarkAppointmentRetained}
-              onOpenMatter={handleOpenMatter}
-              onNewClient={(prefillPhone) => {
-                setNewClientPhonePrefill(prefillPhone || '')
-                setIsNewClientOpen(true)
-              }}
+            <Route
+              path="/task-manager"
+              element={
+                <TaskManagerView
+                  tasks={officeTasks}
+                  clients={clients}
+                  staffList={STAFF_MEMBERS}
+                  onAssignTask={() => {
+                    setSelectedTaskForEdit(null)
+                    setIsOfficeTaskOpen(true)
+                  }}
+                  onCompleteTask={(task) => {
+                    setTaskToComplete(task)
+                    setIsCompleteTaskOpen(true)
+                  }}
+                  onReassignTask={handleReassignTask}
+                  onChangeStatus={handleChangeTaskStatus}
+                  onOpenClient={(cid) => {
+                    const c = clients.find((x) => x.id === cid)
+                    if (c) {
+                      setSelectedClientForProfile(c)
+                      setIsClientProfileOpen(true)
+                    }
+                  }}
+                />
+              }
             />
-          )}
+            <Route path="/tasks" element={<Navigate to="/task-manager" replace />} />
 
-          {currentView === 'Clients' && (
-            <ClientsView
-              clients={clients}
-              matters={matters}
-              onNewClient={() => {
-                setNewClientPhonePrefill('')
-                setIsNewClientOpen(true)
-              }}
-              onOpenClientProfile={(c) => {
-                setSelectedClientForProfile(c)
-                setIsClientProfileOpen(true)
-              }}
-              onOpenMatter={handleOpenMatter}
+            <Route
+              path="/appointments"
+              element={
+                <AppointmentsView
+                  appointments={appointments}
+                  clients={clients}
+                  onBookAppointment={(date, time) => {
+                    setSelectedAppointmentForEdit(null)
+                    setApptDefaultDate(date)
+                    setApptDefaultTime(time)
+                    setIsAppointmentModalOpen(true)
+                  }}
+                  onEditAppointment={(appt) => {
+                    setSelectedAppointmentForEdit(appt)
+                    setIsAppointmentModalOpen(true)
+                  }}
+                  onUpdateCell={handleUpdateAppointmentCell}
+                  onMarkRetained={handleMarkAppointmentRetained}
+                  onOpenMatter={handleOpenMatter}
+                  onNewClient={(prefillPhone) => {
+                    setNewClientPhonePrefill(prefillPhone || '')
+                    setIsNewClientOpen(true)
+                  }}
+                />
+              }
             />
-          )}
 
-          {currentView === 'To-Do List' && (
-            <TodoListMattersView
-              matters={matters}
-              clients={clients}
-              staffList={STAFF_MEMBERS}
-              onOpenMatter={handleOpenMatter}
-              onNewMatter={() => {
-                setNewMatterInitialClientId(undefined)
-                setIsNewMatterOpen(true)
-              }}
-              onUpdateSubmissionDeadline={handleUpdateSubmissionDeadline}
-              onChangeStage={handleChangeStage}
+            <Route
+              path="/clients"
+              element={
+                <ClientsView
+                  clients={clients}
+                  matters={matters}
+                  onNewClient={() => {
+                    setNewClientPhonePrefill('')
+                    setIsNewClientOpen(true)
+                  }}
+                  onOpenClientProfile={(c) => {
+                    setSelectedClientForProfile(c)
+                    setIsClientProfileOpen(true)
+                  }}
+                  onOpenMatter={handleOpenMatter}
+                />
+              }
             />
-          )}
 
-          {currentView === 'Matter' && (
-            <MatterDetailView
-              matter={currentMatter}
-              client={currentMatterClient}
-              onBack={() => setCurrentView('To-Do List')}
-              onUpdateMatter={handleUpdateMatter}
-              onEditAssignment={() => setIsEditAssignmentOpen(true)}
-              onRecordSubmission={() => setIsRecordSubmissionOpen(true)}
-              onRecordContact={() => setIsRecordContactOpen(true)}
-              onAddDeadline={() => {
-                setDeadlineMatterId(currentMatter.id)
-                setIsDeadlineOpen(true)
-              }}
-              onAddGovtRequest={() => setIsPflOpen(true)}
-              onPreviewClientPortal={(mid) => {
-                setSelectedMatterId(mid)
-                setCurrentView('Client Portal')
-              }}
+            <Route
+              path="/todo-list"
+              element={
+                <TodoListMattersView
+                  matters={matters}
+                  clients={clients}
+                  staffList={STAFF_MEMBERS}
+                  onOpenMatter={handleOpenMatter}
+                  onNewMatter={() => {
+                    setNewMatterInitialClientId(undefined)
+                    setIsNewMatterOpen(true)
+                  }}
+                  onUpdateSubmissionDeadline={handleUpdateSubmissionDeadline}
+                  onChangeStage={handleChangeStage}
+                />
+              }
             />
-          )}
+            <Route path="/matters" element={<Navigate to="/todo-list" replace />} />
 
-          {currentView === 'Deadline Centre' && (
-            <DeadlineCentreView
-              matters={matters}
-              onOpenMatter={handleOpenMatter}
-              onAddDeadline={() => {
-                setDeadlineMatterId(undefined)
-                setIsDeadlineOpen(true)
-              }}
-              onAddGovtRequest={() => setIsPflOpen(true)}
-              onResolveDeadline={handleResolveDeadline}
+            <Route
+              path="/matter/:id"
+              element={
+                <MatterRouteWrapper
+                  matters={matters}
+                  clients={clients}
+                  onUpdateMatter={handleUpdateMatter}
+                  onEditAssignment={() => setIsEditAssignmentOpen(true)}
+                  onRecordSubmission={() => setIsRecordSubmissionOpen(true)}
+                  onRecordContact={() => setIsRecordContactOpen(true)}
+                  onAddDeadline={(mid) => {
+                    setDeadlineMatterId(mid)
+                    setIsDeadlineOpen(true)
+                  }}
+                  onAddGovtRequest={() => setIsPflOpen(true)}
+                  onPreviewClientPortal={(mid) => {
+                    setSelectedMatterId(mid)
+                  }}
+                  onNavigate={(p) => navigate(p)}
+                />
+              }
             />
-          )}
+            <Route path="/matter" element={<Navigate to="/todo-list" replace />} />
 
-          {currentView === 'Client Portal' && (
-            <ClientPortalPreview
-              matters={matters}
-              selectedMatterId={selectedMatterId}
-              onSelectMatter={setSelectedMatterId}
-              onSimulateUpload={(mid, docIdx) => {
-                const target = matters.find((m) => m.id === mid)
-                if (target) {
-                  const updatedDocs = [...target.docs]
-                  const doc = updatedDocs[docIdx]
-                  const nextV = doc.version + 1
-                  updatedDocs[docIdx] = {
-                    ...doc,
-                    version: nextV,
-                    status: 'Uploaded — Review Required',
-                    history: [`v${nextV} — Uploaded via client portal preview`, ...doc.history]
-                  }
-                  handleUpdateMatter({
-                    ...target,
-                    docs: updatedDocs,
-                    events: [`Client uploaded sample for ${doc.name} (v${nextV})`, ...target.events]
-                  })
-                }
-              }}
-              onSendMessage={(mid, text) => {
-                const target = matters.find((m) => m.id === mid)
-                if (target) {
-                  handleUpdateMatter({
-                    ...target,
-                    messages: [...(target.messages || []), { from: 'Client', text }]
-                  })
-                }
-                showToast('Message sent to legal team.')
-              }}
-              onSaveQuestionnaire={(mid, q) => {
-                const target = matters.find((m) => m.id === mid)
-                if (target) {
-                  handleUpdateMatter({
-                    ...target,
-                    questionnaire: q,
-                    events: ['Client updated questionnaire answers', ...target.events]
-                  })
-                }
-                showToast('Questionnaire saved.')
-              }}
+            <Route
+              path="/case-managers"
+              element={
+                <CaseManagersView
+                  staffList={staffList}
+                  matters={matters}
+                  onReassignFiles={handleReassignFiles}
+                  onAddManager={handleAddManager}
+                  onOpenMatter={handleOpenMatter}
+                />
+              }
             />
-          )}
 
-          {currentView === 'Case Managers' && (
-            <CaseManagersView
-              staffList={staffList}
-              matters={matters}
-              onReassignFiles={handleReassignFiles}
-              onAddManager={handleAddManager}
-              onOpenMatter={handleOpenMatter}
+            <Route
+              path="/retainers-invoices"
+              element={
+                <RetainersInvoicesView
+                  matters={matters}
+                  clients={clients}
+                  staffList={staffList}
+                  onUpdateMatter={handleUpdateMatter}
+                  onOpenMatter={handleOpenMatter}
+                  onOpenClient={(cid) => {
+                    const c = clients.find((x) => x.id === cid)
+                    if (c) {
+                      setSelectedClientForProfile(c)
+                      setIsClientProfileOpen(true)
+                    }
+                  }}
+                />
+              }
             />
-          )}
+            <Route path="/retainers" element={<Navigate to="/retainers-invoices" replace />} />
 
-          {currentView === 'Retainers and Invoices' && (
-            <RetainersInvoicesView
-              matters={matters}
-              clients={clients}
-              staffList={staffList}
-              onUpdateMatter={handleUpdateMatter}
-              onOpenMatter={handleOpenMatter}
-              onOpenClient={(cid) => {
-                const c = clients.find((x) => x.id === cid)
-                if (c) {
-                  setSelectedClientForProfile(c)
-                  setIsClientProfileOpen(true)
-                }
-              }}
+            <Route
+              path="/deadline-centre"
+              element={
+                <DeadlineCentreView
+                  matters={matters}
+                  onOpenMatter={handleOpenMatter}
+                  onAddDeadline={() => {
+                    setDeadlineMatterId(undefined)
+                    setIsDeadlineOpen(true)
+                  }}
+                  onAddGovtRequest={() => setIsPflOpen(true)}
+                  onResolveDeadline={handleResolveDeadline}
+                />
+              }
             />
-          )}
+            <Route path="/deadlines" element={<Navigate to="/deadline-centre" replace />} />
 
-          {currentView === 'Settings' && <SettingsView />}
+            <Route
+              path="/client-portal"
+              element={
+                <ClientPortalPreview
+                  matters={matters}
+                  selectedMatterId={selectedMatterId}
+                  onSelectMatter={setSelectedMatterId}
+                  onSimulateUpload={(mid, docIdx) => {
+                    const target = matters.find((m) => m.id === mid)
+                    if (target) {
+                      const updatedDocs = [...target.docs]
+                      const doc = updatedDocs[docIdx]
+                      const nextV = doc.version + 1
+                      updatedDocs[docIdx] = {
+                        ...doc,
+                        version: nextV,
+                        status: 'Uploaded — Review Required',
+                        history: [`v${nextV} — Uploaded via client portal preview`, ...doc.history]
+                      }
+                      handleUpdateMatter({
+                        ...target,
+                        docs: updatedDocs,
+                        events: [`Client uploaded sample for ${doc.name} (v${nextV})`, ...target.events]
+                      })
+                    }
+                  }}
+                  onSendMessage={(mid, text) => {
+                    const target = matters.find((m) => m.id === mid)
+                    if (target) {
+                      handleUpdateMatter({
+                        ...target,
+                        messages: [...(target.messages || []), { from: 'Client', text }]
+                      })
+                    }
+                    showToast('Message sent to legal team.')
+                  }}
+                  onSaveQuestionnaire={(mid, q) => {
+                    const target = matters.find((m) => m.id === mid)
+                    if (target) {
+                      handleUpdateMatter({
+                        ...target,
+                        questionnaire: q,
+                        events: ['Client updated questionnaire answers', ...target.events]
+                      })
+                    }
+                    showToast('Questionnaire saved.')
+                  }}
+                />
+              }
+            />
+
+            <Route path="/settings" element={<SettingsView />} />
+
+            {/* Catch-all redirect to /dashboard */}
+            <Route path="*" element={<Navigate to="/dashboard" replace />} />
+          </Routes>
         </main>
       </div>
 

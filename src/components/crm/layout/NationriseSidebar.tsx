@@ -1,4 +1,5 @@
 import React from 'react'
+import { Link, useLocation } from 'react-router-dom'
 import { CRMView } from '@/types/crm'
 import { NationriseLogo } from './NationriseLogo'
 import { toast } from '@/components/ui/sonner'
@@ -68,8 +69,8 @@ function GearIcon({ className = 'w-4 h-4' }: { className?: string }) {
 }
 
 interface NationriseSidebarProps {
-  currentView: CRMView
-  onViewChange: (view: CRMView) => void
+  currentView?: CRMView
+  onViewChange?: (view: CRMView) => void
   taskCount?: number
   deadlineCount?: number
   retainedCount?: number
@@ -83,20 +84,23 @@ export function NationriseSidebar({
   isOpenMobile = false,
   onCloseMobile
 }: NationriseSidebarProps) {
+  const location = useLocation()
+
   const navItems: Array<{
     id: CRMView
     label: string
+    path: string
     icon: React.ReactNode
   }> = [
-    { id: 'Dashboard', label: 'Dashboard', icon: <WaffleGridIcon className="w-4 h-4" /> },
-    { id: 'Task Manager', label: 'Task Manager', icon: <CheckmarkIcon className="w-4 h-4" /> },
-    { id: 'Appointments', label: 'Appointments', icon: <WaffleGridIcon className="w-4 h-4" /> },
-    { id: 'Clients', label: 'Clients', icon: <PawnIcon className="w-4 h-4" /> },
-    { id: 'To-Do List', label: 'To-Do List', icon: <LinedDocIcon className="w-4 h-4" /> },
-    { id: 'Case Managers', label: 'Case Managers', icon: <PawnIcon className="w-4 h-4" /> },
-    { id: 'Retainers and Invoices', label: 'Retainers and Invoices', icon: <LinedDocIcon className="w-4 h-4" /> },
-    { id: 'Deadline Centre', label: 'Deadline Centre', icon: <ClockIcon className="w-4 h-4" /> },
-    { id: 'Settings', label: 'Settings', icon: <GearIcon className="w-4 h-4" /> }
+    { id: 'Dashboard', label: 'Dashboard', path: '/dashboard', icon: <WaffleGridIcon className="w-4 h-4" /> },
+    { id: 'Task Manager', label: 'Task Manager', path: '/task-manager', icon: <CheckmarkIcon className="w-4 h-4" /> },
+    { id: 'Appointments', label: 'Appointments', path: '/appointments', icon: <WaffleGridIcon className="w-4 h-4" /> },
+    { id: 'Clients', label: 'Clients', path: '/clients', icon: <PawnIcon className="w-4 h-4" /> },
+    { id: 'To-Do List', label: 'To-Do List', path: '/todo-list', icon: <LinedDocIcon className="w-4 h-4" /> },
+    { id: 'Case Managers', label: 'Case Managers', path: '/case-managers', icon: <PawnIcon className="w-4 h-4" /> },
+    { id: 'Retainers and Invoices', label: 'Retainers and Invoices', path: '/retainers-invoices', icon: <LinedDocIcon className="w-4 h-4" /> },
+    { id: 'Deadline Centre', label: 'Deadline Centre', path: '/deadline-centre', icon: <ClockIcon className="w-4 h-4" /> },
+    { id: 'Settings', label: 'Settings', path: '/settings', icon: <GearIcon className="w-4 h-4" /> }
   ]
 
   return (
@@ -141,15 +145,21 @@ export function NationriseSidebar({
           PRACTICE WORKSPACE
         </div>
 
-        {/* Navigation links with SCR-001 floating pill active UI */}
+        {/* Navigation links with SCR-001 floating pill active UI & Direct Route Links */}
         <nav className="flex-1 px-2.5 py-1 space-y-1 overflow-y-auto sidebar-scroll">
           {navItems.map((item) => {
-            const isActive = currentView === item.id || (currentView === 'Matter' && item.id === 'To-Do List')
+            const isActive =
+              location.pathname === item.path ||
+              (item.path === '/dashboard' && location.pathname === '/') ||
+              (item.id === 'To-Do List' && location.pathname.startsWith('/matter')) ||
+              currentView === item.id
+
             return (
               <div key={item.id} className="relative">
-                <button
+                <Link
+                  to={item.path}
                   onClick={() => {
-                    onViewChange(item.id)
+                    if (onViewChange) onViewChange(item.id)
                     if (onCloseMobile) onCloseMobile()
                   }}
                   className={`w-full flex items-center gap-3.5 px-3 py-2.5 text-[13.5px] rounded-[10px] transition-all text-left group cursor-pointer ${
@@ -162,7 +172,7 @@ export function NationriseSidebar({
                     {item.icon}
                   </span>
                   <span className="truncate">{item.label}</span>
-                </button>
+                </Link>
               </div>
             )
           })}
