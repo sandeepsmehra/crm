@@ -220,6 +220,8 @@ export const http = {
     apiRequest<T>(endpoint, { ...options, method: 'DELETE' })
 }
 
+export const apiClient = http
+
 // =============================================================================
 // DOMAIN-SPECIFIC API CLIENTS (Using variables from src/apiEndpoints.ts)
 // =============================================================================
