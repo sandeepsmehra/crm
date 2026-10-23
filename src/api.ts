@@ -1,9 +1,9 @@
 /**
  * ==============================================================================
- * Nationrise CaseOS - FastAPI Backend Client
+ * Nationrise CaseOS - Backend API Client
  * ==============================================================================
- * Base Backend URL Structure: https://abc-fastapi.com/v1/api
- * Example Endpoint: https://abc-fastapi.com/v1/api/clients
+ * Backend base URL is configured exclusively via environment variables:
+ * - VITE_API_BASE_URL (configured in .env / .env.development / .env.production)
  * ==============================================================================
  */
 
@@ -20,12 +20,18 @@ import type {
   SubmissionRecord
 } from '@/types/crm'
 
-// Environment configuration with default fallback to user's FastAPI backend
+// Environment configuration loaded dynamically from Vite environment variables (.env files)
 export const API_BASE_URL: string = (
-  import.meta.env.VITE_API_BASE_URL || 'https://abc-fastapi.com/v1/api'
+  import.meta.env.VITE_API_BASE_URL || ''
 ).replace(/\/+$/, '')
 
 export const API_TIMEOUT_MS: number = Number(import.meta.env.VITE_API_TIMEOUT) || 15000
+
+if (!API_BASE_URL && typeof window !== 'undefined' && import.meta.env.DEV) {
+  console.warn(
+    '[api] VITE_API_BASE_URL is not defined in your .env file. Please ensure VITE_API_BASE_URL is set.'
+  )
+}
 
 /**
  * Standard FastAPI Error Structure
@@ -215,7 +221,7 @@ export const http = {
 // =============================================================================
 
 /**
- * 1. Clients API Service (https://abc-fastapi.com/v1/api/clients)
+ * 1. Clients API Service (/clients)
  */
 export const clientsApi = {
   /**
@@ -264,7 +270,7 @@ export const clientsApi = {
 }
 
 /**
- * 2. Matters API Service (https://abc-fastapi.com/v1/api/matters)
+ * 2. Matters API Service (/matters)
  */
 export const mattersApi = {
   getAll: (params?: {
@@ -305,7 +311,7 @@ export const mattersApi = {
 }
 
 /**
- * 3. Appointments API Service (https://abc-fastapi.com/v1/api/appointments)
+ * 3. Appointments API Service (/appointments)
  */
 export const appointmentsApi = {
   getAll: (params?: {
@@ -332,7 +338,7 @@ export const appointmentsApi = {
 }
 
 /**
- * 4. Office Tasks API Service (https://abc-fastapi.com/v1/api/tasks)
+ * 4. Office Tasks API Service (/tasks)
  */
 export const tasksApi = {
   getAll: (params?: {
@@ -361,7 +367,7 @@ export const tasksApi = {
 }
 
 /**
- * 5. Procedural Fairness Letters (PFL) API Service (https://abc-fastapi.com/v1/api/pfl)
+ * 5. Procedural Fairness Letters (PFL) API Service (/pfl)
  */
 export const pflApi = {
   getAll: () => http.get<PFLRecord[]>('/pfl'),
@@ -378,7 +384,7 @@ export const pflApi = {
 }
 
 /**
- * 6. Deadlines API Service (https://abc-fastapi.com/v1/api/deadlines)
+ * 6. Deadlines API Service (/deadlines)
  */
 export const deadlinesApi = {
   getAll: () => http.get<DeadlineItem[]>('/deadlines'),
@@ -391,7 +397,7 @@ export const deadlinesApi = {
 }
 
 /**
- * 7. Authentication & User Profile API (https://abc-fastapi.com/v1/api/auth)
+ * 7. Authentication & User Profile API (/auth)
  */
 export const authApi = {
   login: (credentials: { username?: string; email?: string; password?: string }) =>
