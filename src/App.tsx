@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react'
+import React, { useState, useEffect, useMemo, lazy, Suspense } from 'react'
 import { Routes, Route, Navigate, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { 
   CRMView, 
@@ -26,21 +26,35 @@ import { hasHardDeadlineSoon } from '@/lib/crmUtils'
 import { NationriseSidebar } from '@/components/crm/layout/NationriseSidebar'
 import { NationriseTopBar } from '@/components/crm/layout/NationriseTopBar'
 import { DemoBanner } from '@/components/crm/layout/DemoBanner'
+import { PageLoadingSkeleton } from '@/components/crm/layout/PageLoadingSkeleton'
 import { Toaster, toast } from '@/components/ui/sonner'
 
-// Module Group Components (Views + Related Modals per Module)
-import { DashboardView, PflModal } from '@/components/crm/modules/dashboard'
-import { TaskManagerView, OfficeTaskModal, CompleteTaskModal } from '@/components/crm/modules/task-manager'
-import { AppointmentsView, AppointmentModal } from '@/components/crm/modules/appointments'
-import { ClientsView, NewClientModal, ClientProfileModal } from '@/components/crm/modules/clients'
-import { TodoListMattersView, NewMatterModal, RecordSubmissionModal } from '@/components/crm/modules/todo-list'
-import { MatterDetailView, EditAssignmentModal, RecordContactModal } from '@/components/crm/modules/matter'
-import { CaseManagersView } from '@/components/crm/modules/case-managers'
-import { RetainersInvoicesView } from '@/components/crm/modules/retainers-invoices'
-import { DeadlineCentreView, DeadlineModal } from '@/components/crm/modules/deadline-centre'
-import { ClientPortalPreview } from '@/components/crm/modules/client-portal'
-import { SettingsView } from '@/components/crm/modules/settings'
-import { QuickMenuModal } from '@/components/crm/modules/common'
+// Lazy-Loaded Page Views for code splitting and instant bundle load
+const DashboardView = lazy(() => import('@/components/crm/modules/dashboard/DashboardView').then(m => ({ default: m.DashboardView })))
+const TaskManagerView = lazy(() => import('@/components/crm/modules/task-manager/TaskManagerView').then(m => ({ default: m.TaskManagerView })))
+const AppointmentsView = lazy(() => import('@/components/crm/modules/appointments/AppointmentsView').then(m => ({ default: m.AppointmentsView })))
+const ClientsView = lazy(() => import('@/components/crm/modules/clients/ClientsView').then(m => ({ default: m.ClientsView })))
+const TodoListMattersView = lazy(() => import('@/components/crm/modules/todo-list/TodoListMattersView').then(m => ({ default: m.TodoListMattersView })))
+const MatterDetailView = lazy(() => import('@/components/crm/modules/matter/MatterDetailView').then(m => ({ default: m.MatterDetailView })))
+const CaseManagersView = lazy(() => import('@/components/crm/modules/case-managers/CaseManagersView').then(m => ({ default: m.CaseManagersView })))
+const RetainersInvoicesView = lazy(() => import('@/components/crm/modules/retainers-invoices/RetainersInvoicesView').then(m => ({ default: m.RetainersInvoicesView })))
+const DeadlineCentreView = lazy(() => import('@/components/crm/modules/deadline-centre/DeadlineCentreView').then(m => ({ default: m.DeadlineCentreView })))
+const ClientPortalPreview = lazy(() => import('@/components/crm/modules/client-portal/ClientPortalPreview').then(m => ({ default: m.ClientPortalPreview })))
+const SettingsView = lazy(() => import('@/components/crm/modules/settings/SettingsView').then(m => ({ default: m.SettingsView })))
+
+// Modal Components (Opened On-Demand)
+import { PflModal } from '@/components/crm/modules/dashboard/PflModal'
+import { OfficeTaskModal } from '@/components/crm/modules/task-manager/OfficeTaskModal'
+import { CompleteTaskModal } from '@/components/crm/modules/task-manager/CompleteTaskModal'
+import { AppointmentModal } from '@/components/crm/modules/appointments/AppointmentModal'
+import { NewClientModal } from '@/components/crm/modules/clients/NewClientModal'
+import { ClientProfileModal } from '@/components/crm/modules/clients/ClientProfileModal'
+import { NewMatterModal } from '@/components/crm/modules/todo-list/NewMatterModal'
+import { RecordSubmissionModal } from '@/components/crm/modules/todo-list/RecordSubmissionModal'
+import { EditAssignmentModal } from '@/components/crm/modules/matter/EditAssignmentModal'
+import { RecordContactModal } from '@/components/crm/modules/matter/RecordContactModal'
+import { DeadlineModal } from '@/components/crm/modules/deadline-centre/DeadlineModal'
+import { QuickMenuModal } from '@/components/crm/modules/common/QuickMenuModal'
 
 export const VIEW_TO_PATH_MAP: Record<CRMView, string> = {
   'Dashboard': '/dashboard',
@@ -596,9 +610,10 @@ export function App() {
         <DemoBanner currentView={currentView} onResetDemo={handleResetDemo} />
 
         <main className="flex-1 overflow-y-auto px-4 sm:px-8 py-5 w-full mx-auto transition-all page-scroll">
-          {/* DECLARATIVE ROUTING FOR ALL CRM PAGES */}
-          <Routes>
-            <Route path="/" element={<Navigate to="/dashboard" replace />} />
+          {/* DECLARATIVE ROUTING FOR ALL CRM PAGES WITH LAZY LOADING */}
+          <Suspense fallback={<PageLoadingSkeleton />}>
+            <Routes>
+              <Route path="/" element={<Navigate to="/dashboard" replace />} />
 
             <Route
               path="/dashboard"
@@ -845,7 +860,8 @@ export function App() {
             {/* Catch-all redirect to /dashboard */}
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
           </Routes>
-        </main>
+        </Suspense>
+      </main>
       </div>
 
       {/* MODALS */}
