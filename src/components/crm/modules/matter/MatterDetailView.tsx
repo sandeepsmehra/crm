@@ -1,7 +1,14 @@
 import React, { useState } from 'react'
 import { Matter, Client } from '@/types/crm'
-import { APPLICATION_TYPES, STAFF_MEMBERS } from '@/data/mockData'
 import { toast } from '@/components/ui/sonner'
+import {
+  ApplicationDetailsTab,
+  ClientInformationTab,
+  MatterRemindersTab,
+  CaseWorkNotesTab,
+  DocumentsVerifiedTab,
+  DocRow
+} from './tabs'
 
 interface MatterDetailViewProps {
   matter: Matter
@@ -22,16 +29,6 @@ type MatterTab =
   | 'Reminders'
   | 'Case Work & Notes'
   | 'Documents Received / Verified'
-
-interface DocRow {
-  id: string
-  name: string
-  receivedDate: string
-  reviewDue: string
-  status: string
-  verifiedBy: string
-  notes: string
-}
 
 export function MatterDetailView({
   matter,
@@ -216,487 +213,75 @@ export function MatterDetailView({
         })}
       </div>
 
-      {/* ======================================================== */}
-      {/* TAB 1: APPLICATION DETAILS (SCR-040, SCR-041)           */}
-      {/* ======================================================== */}
+      {/* Tab Contents */}
       {activeTab === 'Application Details' && (
-        <div className="space-y-4">
-          {/* Main Card */}
-          <div className="bg-white rounded-xl border border-[#e5e7eb] shadow-2xs p-6 space-y-5">
-            <h2 className="text-base font-bold text-[#111827]">Application Details</h2>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-              <div>
-                <label className="block text-sm font-semibold text-[#111827] mb-1.5">
-                  Application Type
-                </label>
-                <select
-                  value={appType}
-                  onChange={(e) => setAppType(e.target.value)}
-                  className="w-full bg-[#ebf3fc] border border-[#d2e3f8] text-[#1c385c] rounded-lg px-3.5 py-2.5 text-sm font-medium outline-none cursor-pointer"
-                >
-                  {APPLICATION_TYPES.map((t) => (
-                    <option key={t} value={t}>
-                      {t}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-semibold text-[#111827] mb-1.5">
-                  Your application type
-                </label>
-                <input
-                  type="text"
-                  placeholder="e.g. with Restoration"
-                  value={customAppType}
-                  onChange={(e) => setCustomAppType(e.target.value)}
-                  className="w-full bg-white border border-[#d1d5db] rounded-lg px-3.5 py-2.5 text-sm text-[#111827] outline-none"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-semibold text-[#111827] mb-1.5">
-                Case Manager
-              </label>
-              <select
-                value={caseManager}
-                onChange={(e) => setCaseManager(e.target.value)}
-                className="w-full bg-[#ebf3fc] border border-[#d2e3f8] text-[#1c385c] rounded-lg px-3.5 py-2.5 text-sm font-medium outline-none cursor-pointer max-w-md"
-              >
-                <option value="Unassigned">Unassigned</option>
-                {STAFF_MEMBERS.map((s) => (
-                  <option key={s} value={s}>
-                    {s}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-semibold text-[#111827] mb-1.5">
-                Case Overview
-              </label>
-              <textarea
-                rows={7}
-                value={caseOverview}
-                onChange={(e) => setCaseOverview(e.target.value)}
-                className="w-full bg-white border border-[#d1d5db] rounded-lg p-3 text-sm text-[#111827] outline-none leading-relaxed"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-semibold text-[#111827] mb-1.5">
-                Extra Notes
-              </label>
-              <textarea
-                rows={3}
-                placeholder="Additional notes for this application"
-                value={extraNotes}
-                onChange={(e) => setExtraNotes(e.target.value)}
-                className="w-full bg-white border border-[#d1d5db] rounded-lg p-3 text-sm text-[#111827] outline-none"
-              />
-            </div>
-          </div>
-
-          {/* Dependants Card (SCR-041) */}
-          <div className="bg-white rounded-xl border border-[#e5e7eb] shadow-2xs p-6 space-y-4">
-            <h2 className="text-base font-bold text-[#111827]">Dependants</h2>
-            <div>
-              <label className="block text-sm font-semibold text-[#111827] mb-1.5">
-                Any dependants?
-              </label>
-              <select
-                value={hasDependants}
-                onChange={(e) => setHasDependants(e.target.value)}
-                className="w-full bg-[#ebf3fc] border border-[#d2e3f8] text-[#1c385c] rounded-lg px-3.5 py-2.5 text-sm font-medium outline-none cursor-pointer"
-              >
-                <option value="No">No</option>
-                <option value="Yes">Yes</option>
-              </select>
-            </div>
-          </div>
-
-          {/* PR Tracking Card (SCR-041) */}
-          <div className="bg-white rounded-xl border border-[#e5e7eb] shadow-2xs p-6 space-y-4">
-            <h2 className="text-base font-bold text-[#111827]">PR Tracking</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-              <div>
-                <label className="block text-sm font-semibold text-[#111827] mb-1.5">
-                  ITA date
-                </label>
-                <input
-                  type="date"
-                  value={itaDate}
-                  onChange={(e) => setItaDate(e.target.value)}
-                  className="w-full bg-white border border-[#d1d5db] rounded-lg px-3.5 py-2 text-sm text-[#111827] outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-semibold text-[#111827] mb-1.5">
-                  Deadline to Submit
-                </label>
-                <input
-                  type="date"
-                  value={deadlineSubmit}
-                  onChange={(e) => setDeadlineSubmit(e.target.value)}
-                  className="w-full bg-white border border-[#d1d5db] rounded-lg px-3.5 py-2 text-sm text-[#111827] outline-none"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-semibold text-[#111827] mb-1.5">
-                Notes
-              </label>
-              <textarea
-                rows={4}
-                value={prNotes}
-                onChange={(e) => setPrNotes(e.target.value)}
-                className="w-full bg-white border border-[#d1d5db] rounded-lg p-3 text-sm text-[#111827] outline-none"
-              />
-            </div>
-          </div>
-        </div>
+        <ApplicationDetailsTab
+          appType={appType}
+          onAppTypeChange={setAppType}
+          customAppType={customAppType}
+          onCustomAppTypeChange={setCustomAppType}
+          caseManager={caseManager}
+          onCaseManagerChange={setCaseManager}
+          caseOverview={caseOverview}
+          onCaseOverviewChange={setCaseOverview}
+          extraNotes={extraNotes}
+          onExtraNotesChange={setExtraNotes}
+          hasDependants={hasDependants}
+          onHasDependantsChange={setHasDependants}
+          itaDate={itaDate}
+          onItaDateChange={setItaDate}
+          deadlineSubmit={deadlineSubmit}
+          onDeadlineSubmitChange={setDeadlineSubmit}
+          prNotes={prNotes}
+          onPrNotesChange={setPrNotes}
+        />
       )}
 
-      {/* ======================================================== */}
-      {/* TAB 2: CLIENT INFORMATION (SCR-042)                      */}
-      {/* ======================================================== */}
       {activeTab === 'Client Information' && (
-        <div className="bg-white rounded-xl border border-[#e5e7eb] shadow-2xs p-6 space-y-5">
-          <div>
-            <h2 className="text-base font-bold text-[#111827]">Client Information</h2>
-            <p className="text-xs text-[#6b7280] mt-0.5">
-              Shared with the main client profile and every application. Changes save automatically.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-            <div>
-              <label className="block text-sm font-semibold text-[#111827] mb-1.5">
-                Full name
-              </label>
-              <input
-                type="text"
-                value={clientName}
-                onChange={(e) => setClientName(e.target.value)}
-                className="w-full bg-white border border-[#d1d5db] rounded-lg px-3.5 py-2.5 text-sm text-[#111827] outline-none"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-semibold text-[#111827] mb-1.5">
-                Phone number
-              </label>
-              <input
-                type="text"
-                value={clientPhone}
-                onChange={(e) => setClientPhone(e.target.value)}
-                className="w-full bg-white border border-[#d1d5db] rounded-lg px-3.5 py-2.5 text-sm text-[#111827] outline-none"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-semibold text-[#111827] mb-1.5">
-                Email
-              </label>
-              <input
-                type="email"
-                value={clientEmail}
-                onChange={(e) => setClientEmail(e.target.value)}
-                className="w-full bg-white border border-[#d1d5db] rounded-lg px-3.5 py-2.5 text-sm text-[#111827] outline-none"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-semibold text-[#111827] mb-1.5">
-                Date of birth
-              </label>
-              <input
-                type="date"
-                value={clientDob}
-                onChange={(e) => setClientDob(e.target.value)}
-                className="w-full bg-white border border-[#d1d5db] rounded-lg px-3.5 py-2 text-sm text-[#111827] outline-none"
-              />
-            </div>
-
-            <div className="md:col-span-2">
-              <label className="block text-sm font-semibold text-[#111827] mb-1.5">
-                Address
-              </label>
-              <input
-                type="text"
-                value={clientAddress}
-                onChange={(e) => setClientAddress(e.target.value)}
-                className="w-full bg-white border border-[#d1d5db] rounded-lg px-3.5 py-2.5 text-sm text-[#111827] outline-none"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-semibold text-[#111827] mb-1.5">
-                UCI
-              </label>
-              <input
-                type="text"
-                value={clientUci}
-                onChange={(e) => setClientUci(e.target.value)}
-                className="w-full bg-white border border-[#d1d5db] rounded-lg px-3.5 py-2.5 text-sm text-[#111827] outline-none"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-semibold text-[#111827] mb-1.5">
-                Immigration status
-              </label>
-              <input
-                type="text"
-                value={immigrationStatus}
-                onChange={(e) => setImmigrationStatus(e.target.value)}
-                className="w-full bg-white border border-[#d1d5db] rounded-lg px-3.5 py-2.5 text-sm text-[#111827] outline-none"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-semibold text-[#111827] mb-1.5">
-                Status expiry
-              </label>
-              <input
-                type="date"
-                value={statusExpiry}
-                onChange={(e) => setStatusExpiry(e.target.value)}
-                className="w-full bg-[#eaf4ee] border border-emerald-300 rounded-lg px-3.5 py-2 text-sm text-[#111827] outline-none"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-semibold text-[#111827] mb-1.5">
-                Emergency contact name
-              </label>
-              <input
-                type="text"
-                value={emergencyName}
-                onChange={(e) => setEmergencyName(e.target.value)}
-                className="w-full bg-white border border-[#d1d5db] rounded-lg px-3.5 py-2.5 text-sm text-[#111827] outline-none"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-semibold text-[#111827] mb-1.5">
-                Relationship
-              </label>
-              <input
-                type="text"
-                value={emergencyRelation}
-                onChange={(e) => setEmergencyRelation(e.target.value)}
-                className="w-full bg-white border border-[#d1d5db] rounded-lg px-3.5 py-2.5 text-sm text-[#111827] outline-none"
-              />
-            </div>
-          </div>
-        </div>
+        <ClientInformationTab
+          clientName={clientName}
+          onClientNameChange={setClientName}
+          clientPhone={clientPhone}
+          onClientPhoneChange={setClientPhone}
+          clientEmail={clientEmail}
+          onClientEmailChange={setClientEmail}
+          clientDob={clientDob}
+          onClientDobChange={setClientDob}
+          clientAddress={clientAddress}
+          onClientAddressChange={setClientAddress}
+          clientUci={clientUci}
+          onClientUciChange={setClientUci}
+          immigrationStatus={immigrationStatus}
+          onImmigrationStatusChange={setImmigrationStatus}
+          statusExpiry={statusExpiry}
+          onStatusExpiryChange={setStatusExpiry}
+          emergencyName={emergencyName}
+          onEmergencyNameChange={setEmergencyName}
+          emergencyRelation={emergencyRelation}
+          onEmergencyRelationChange={setEmergencyRelation}
+        />
       )}
 
-      {/* ======================================================== */}
-      {/* TAB 3: REMINDERS (SCR-043)                               */}
-      {/* ======================================================== */}
       {activeTab === 'Reminders' && (
-        <div className="bg-white rounded-xl border border-[#e5e7eb] shadow-2xs p-6 space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-base font-bold text-[#111827]">Personal Reminders</h2>
-            <button
-              onClick={() => toast.info('Create reminder for this matter')}
-              className="bg-white hover:bg-[#f9fafb] border border-[#d1d5db] text-[#111827] rounded-lg px-4 py-2 text-sm font-medium transition-colors shadow-2xs cursor-pointer"
-            >
-              + Create Reminder
-            </button>
-          </div>
-          <p className="text-xs text-[#6b7280]">No open reminders for this application.</p>
-        </div>
+        <MatterRemindersTab />
       )}
 
-      {/* ======================================================== */}
-      {/* TAB 4: CASE WORK & NOTES (SCR-044)                       */}
-      {/* ======================================================== */}
       {activeTab === 'Case Work & Notes' && (
-        <div className="bg-white rounded-xl border border-[#e5e7eb] shadow-2xs p-6 space-y-4">
-          <div>
-            <h2 className="text-base font-bold text-[#111827]">Case Work & Notes</h2>
-            <p className="text-xs text-[#6b7280] mt-0.5">
-              Record last contact, what we are waiting for and progress. Each saved note keeps its own timestamp.
-            </p>
-          </div>
-
-          <div>
-            <label className="block text-sm font-semibold text-[#111827] mb-1.5">
-              New note
-            </label>
-            <textarea
-              rows={5}
-              value={newNote}
-              onChange={(e) => setNewNote(e.target.value)}
-              className="w-full bg-white border border-[#d1d5db] rounded-lg p-3 text-sm text-[#111827] outline-none leading-relaxed"
-            />
-          </div>
-
-          <div>
-            <button
-              onClick={handleSaveNote}
-              className="bg-white hover:bg-[#f9fafb] border border-[#d1d5db] text-[#111827] rounded-lg px-4 py-2 text-sm font-medium transition-colors shadow-2xs cursor-pointer"
-            >
-              Save Note
-            </button>
-          </div>
-
-          <div className="pt-2">
-            {savedNotes.length > 0 ? (
-              <div className="space-y-3">
-                {savedNotes.map((n) => (
-                  <div key={n.id} className="p-3 bg-[#fafbfb] border border-[#e5e7eb] rounded-lg text-sm">
-                    <div className="text-xs text-[#6b7280] mb-1 font-mono">{n.time}</div>
-                    <div className="text-[#111827]">{n.text}</div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-xs text-[#6b7280]">
-                No notes yet. Add the first update for this application.
-              </p>
-            )}
-          </div>
-        </div>
+        <CaseWorkNotesTab
+          newNote={newNote}
+          onNewNoteChange={setNewNote}
+          savedNotes={savedNotes}
+          onSaveNote={handleSaveNote}
+        />
       )}
 
-      {/* ======================================================== */}
-      {/* TAB 5: DOCUMENTS RECEIVED / VERIFIED (SCR-045)           */}
-      {/* ======================================================== */}
       {activeTab === 'Documents Received / Verified' && (
-        <div className="bg-white rounded-xl border border-[#e5e7eb] shadow-2xs p-6 space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-base font-bold text-[#111827]">Documents Received / Verified</h2>
-              <p className="text-xs text-[#6b7280] mt-0.5">
-                Edit directly in the list · Changes save automatically
-              </p>
-            </div>
-            <button
-              onClick={handleAddDocumentRow}
-              className="bg-white hover:bg-[#f9fafb] border border-[#d1d5db] text-[#111827] rounded-lg px-4 py-2 text-sm font-medium transition-colors shadow-2xs cursor-pointer"
-            >
-              + Add Document
-            </button>
-          </div>
-
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead className="bg-[#fafbfb] border-b border-[#e5e7eb] text-[#6b7280] uppercase tracking-wider font-semibold">
-                <tr>
-                  <th className="py-3 px-3">DOCUMENT</th>
-                  <th className="py-3 px-3">RECEIVED DATE</th>
-                  <th className="py-3 px-3">REVIEW DUE</th>
-                  <th className="py-3 px-3">COUNTDOWN</th>
-                  <th className="py-3 px-3">STATUS</th>
-                  <th className="py-3 px-3">VERIFIED BY</th>
-                  <th className="py-3 px-3">NOTES</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[#f3f4f6]">
-                {docRows.map((doc) => (
-                  <tr key={doc.id} className="hover:bg-[#fbfcfb]">
-                    {/* Document Dropdown */}
-                    <td className="py-3 px-3 align-top">
-                      <select
-                        value={doc.name}
-                        onChange={(e) => handleUpdateDoc(doc.id, 'name', e.target.value)}
-                        className="bg-[#ebf3fc] border border-[#d2e3f8] text-[#1c385c] rounded-md px-2.5 py-1.5 text-xs font-medium outline-none cursor-pointer w-44"
-                      >
-                        <option value="PCC">PCC</option>
-                        <option value="IELTS">IELTS</option>
-                        <option value="Experience Letters">Experience Letters</option>
-                        <option value="Passport">Passport</option>
-                        <option value="Marriage certificate">Marriage certificate</option>
-                      </select>
-                      <div className="text-[11px] text-[#6b7280] mt-1">{clientName}</div>
-                    </td>
-
-                    {/* Received Date */}
-                    <td className="py-3 px-3 align-top">
-                      <input
-                        type="date"
-                        value={doc.receivedDate}
-                        onChange={(e) => handleUpdateDoc(doc.id, 'receivedDate', e.target.value)}
-                        className="bg-white border border-[#d1d5db] rounded-md px-2 py-1 text-xs text-[#111827] outline-none"
-                      />
-                    </td>
-
-                    {/* Review Due */}
-                    <td className="py-3 px-3 align-top">
-                      <input
-                        type="date"
-                        value={doc.reviewDue}
-                        onChange={(e) => handleUpdateDoc(doc.id, 'reviewDue', e.target.value)}
-                        className="bg-white border border-[#d1d5db] rounded-md px-2 py-1 text-xs text-[#111827] outline-none"
-                      />
-                    </td>
-
-                    {/* Countdown */}
-                    <td className="py-3 px-3 align-top">
-                      <span className="bg-[#f3f4f6] text-[#6b7280] px-2.5 py-1 rounded text-[11px] font-medium inline-block">
-                        Set review due
-                      </span>
-                    </td>
-
-                    {/* Status Dropdown */}
-                    <td className="py-3 px-3 align-top">
-                      <select
-                        value={doc.status}
-                        onChange={(e) => handleUpdateDoc(doc.id, 'status', e.target.value)}
-                        className="bg-[#ebf3fc] border border-[#d2e3f8] text-[#1c385c] rounded-md px-2.5 py-1.5 text-xs font-medium outline-none cursor-pointer"
-                      >
-                        <option value="Not received">Not received</option>
-                        <option value="Received">Received</option>
-                        <option value="Verified">Verified</option>
-                      </select>
-                    </td>
-
-                    {/* Verified By Dropdown */}
-                    <td className="py-3 px-3 align-top">
-                      <select
-                        value={doc.verifiedBy}
-                        onChange={(e) => handleUpdateDoc(doc.id, 'verifiedBy', e.target.value)}
-                        className="bg-[#ebf3fc] border border-[#d2e3f8] text-[#1c385c] rounded-md px-2.5 py-1.5 text-xs font-medium outline-none cursor-pointer"
-                      >
-                        <option value="">Select manager</option>
-                        {STAFF_MEMBERS.map((s) => (
-                          <option key={s} value={s}>
-                            {s}
-                          </option>
-                        ))}
-                      </select>
-                    </td>
-
-                    {/* Notes */}
-                    <td className="py-3 px-3 align-top">
-                      <input
-                        type="text"
-                        placeholder="Type notes..."
-                        value={doc.notes}
-                        onChange={(e) => handleUpdateDoc(doc.id, 'notes', e.target.value)}
-                        className="bg-white border border-[#d1d5db] rounded-md px-2.5 py-1.5 text-xs text-[#111827] outline-none w-48"
-                      />
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          <p className="text-xs text-[#6b7280] pt-2">
-            Countdown updates automatically from Review due and stops when Verified.
-          </p>
-        </div>
+        <DocumentsVerifiedTab
+          clientName={clientName}
+          docRows={docRows}
+          onAddDocumentRow={handleAddDocumentRow}
+          onUpdateDoc={handleUpdateDoc}
+        />
       )}
 
       {/* Sticky / Fixed Bottom Action Bar matching SCR-040 to SCR-045 */}

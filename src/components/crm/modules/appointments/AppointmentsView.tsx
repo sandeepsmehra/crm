@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { Appointment, Client } from '@/types/crm'
 import { PotentialActionModal } from './PotentialActionModal'
+import { ConsultationsTab, StaffAppointmentsTab, PotentialClientsTab } from './tabs'
 import { toast } from '@/components/ui/sonner'
 
 interface AppointmentsViewProps {
@@ -149,157 +150,23 @@ export function AppointmentsView({
 
       {/* Content for Consultations (SCR-016) */}
       {activeTab === 'Consultations' && (
-        <div className="space-y-3">
-          <div className="bg-white rounded-xl border border-[#e5e7eb] shadow-2xs overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-[13px]">
-                {/* 4 Distinct Color Bands matching SCR-016 */}
-                <thead>
-                  <tr className="text-[11px] font-semibold uppercase tracking-wider">
-                    {/* Zone 1: Mint / Teal */}
-                    <th className="py-2.5 px-4 bg-[#e6f4f1] text-[#135a4e]">TIME</th>
-                    <th className="py-2.5 px-4 bg-[#e6f4f1] text-[#135a4e]">CLIENT</th>
-                    <th className="py-2.5 px-4 bg-[#e6f4f1] text-[#135a4e]">CONTACT</th>
-                    {/* Zone 2: Soft Purple */}
-                    <th className="py-2.5 px-4 bg-[#f0ebfa] text-[#4b2882]">MEETING WITH</th>
-                    <th className="py-2.5 px-4 bg-[#f0ebfa] text-[#4b2882]">COMING FOR</th>
-                    {/* Zone 3: Soft Blue */}
-                    <th className="py-2.5 px-4 bg-[#edf5fd] text-[#1e4d7b]">NOTES</th>
-                    {/* Zone 4: Soft Peach */}
-                    <th className="py-2.5 px-4 bg-[#fdf0e7] text-[#8a5327]">STATUS</th>
-                    <th className="py-2.5 px-4 bg-[#fdf0e7] text-[#8a5327]">CLIENT TYPE</th>
-                    <th className="py-2.5 px-4 bg-[#fdf0e7] text-[#8a5327]">REFERRED BY</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[#f3f4f6]">
-                  <tr 
-                    className="hover:bg-[#fbfcfb] cursor-pointer"
-                    onClick={() => {
-                      if (appointments[0]) onEditAppointment(appointments[0])
-                    }}
-                  >
-                    <td className="py-3.5 px-4 font-normal text-[#1c2826]">1:00 p.m.</td>
-                    <td className="py-3.5 px-4 font-bold text-[#1c2826]">Gurdeep Sin...</td>
-                    <td className="py-3.5 px-4 text-[#1c2826]">604-555-0212</td>
-                    <td className="py-3.5 px-4 text-[#1c2826]">Tejinder</td>
-                    <td className="py-3.5 px-4 text-[#1c2826]">Work Permit</td>
-                    <td className="py-3.5 px-4 text-[#1c2826]">Discuss Work Permit</td>
-                    <td className="py-3.5 px-4" onClick={(e) => e.stopPropagation()}>
-                      <select
-                        defaultValue="Confirmed"
-                        onChange={(e) => {
-                          if (appointments[0]) {
-                            onUpdateCell(appointments[0].id, 'status', e.target.value as any)
-                          }
-                        }}
-                        className="bg-[#e6f4ea] text-[#137333] border border-[#b7e1cd] rounded-md px-2.5 py-1 text-xs font-medium outline-none cursor-pointer"
-                      >
-                        <option value="Confirmed">Confirmed ▾</option>
-                        <option value="Scheduled">Scheduled</option>
-                        <option value="Waiting">Waiting</option>
-                        <option value="Completed">Completed</option>
-                        <option value="Cancelled">Cancelled</option>
-                      </select>
-                    </td>
-                    <td className="py-3.5 px-4 text-[#1a56db] font-medium">Existing Client</td>
-                    <td className="py-3.5 px-4 text-[#6b7280]">—</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          <p className="text-xs text-[#6b7280]">
-            Vancouver time · Click an appointment to open notes, reschedule or view the client profile. Counts include cancelled appointments and imported entries awaiting confirmation.
-          </p>
-        </div>
+        <ConsultationsTab
+          appointments={appointments}
+          onEditAppointment={onEditAppointment}
+          onUpdateCell={onUpdateCell}
+        />
       )}
 
       {/* Content for Staff Appointments (SCR-017) */}
       {activeTab === 'Staff Appointments' && (
-        <div className="space-y-3">
-          <div className="bg-white rounded-xl border border-[#e5e7eb] shadow-2xs overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-[13px]">
-                <thead>
-                  <tr className="text-[11px] font-semibold uppercase tracking-wider">
-                    <th className="py-2.5 px-4 bg-[#e6f4f1] text-[#135a4e]">TIME</th>
-                    <th className="py-2.5 px-4 bg-[#e6f4f1] text-[#135a4e]">CLIENT</th>
-                    <th className="py-2.5 px-4 bg-[#e6f4f1] text-[#135a4e]">CONTACT</th>
-                    <th className="py-2.5 px-4 bg-[#f0ebfa] text-[#4b2882]">MEETING WITH</th>
-                    <th className="py-2.5 px-4 bg-[#f0ebfa] text-[#4b2882]">COMING FOR</th>
-                    <th className="py-2.5 px-4 bg-[#edf5fd] text-[#1e4d7b]">NOTES</th>
-                    <th className="py-2.5 px-4 bg-[#fdf0e7] text-[#8a5327]">STATUS</th>
-                    <th className="py-2.5 px-4 bg-[#fdf0e7] text-[#8a5327]">CLIENT TYPE</th>
-                    <th className="py-2.5 px-4 bg-[#fdf0e7] text-[#8a5327]">REFERRED BY</th>
-                  </tr>
-                </thead>
-              </table>
-              <div className="py-12 text-center text-sm text-[#6b7280]">
-                No staff appointments scheduled for this date.
-              </div>
-            </div>
-          </div>
-          <p className="text-xs text-[#6b7280]">
-            Vancouver time · Click an appointment to open notes, reschedule or view the client profile.
-          </p>
-        </div>
+        <StaffAppointmentsTab />
       )}
 
       {/* Content for Potential Clients (SCR-018) */}
       {activeTab === 'Potential Clients' && (
-        <div className="space-y-3">
-          <div className="bg-white rounded-xl border border-[#e5e7eb] shadow-2xs overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-[13px]">
-                <thead>
-                  <tr className="bg-[#fef3e2] text-[#8a5327] text-[11px] font-semibold uppercase tracking-wider">
-                    <th className="py-2.5 px-4">CLIENT</th>
-                    <th className="py-2.5 px-4">FOLLOW-UP</th>
-                    <th className="py-2.5 px-4">ACTION</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[#f3f4f6]">
-                  {/* Row 1 matching SCR-018 */}
-                  <tr className="hover:bg-[#fbfcfb]">
-                    <td className="py-3.5 px-4 font-bold text-[#1c2826]">Chloe Tremblay</td>
-                    <td className="py-3.5 px-4">
-                      <span className="bg-[#f3f4f6] text-[#374151] rounded px-2.5 py-0.5 text-xs font-medium">
-                        Oct 26
-                      </span>
-                    </td>
-                    <td className="py-3.5 px-4">
-                      <button
-                        onClick={() => handleOpenPotentialAction('Chloe Tremblay')}
-                        className="bg-[#fff8ee] border border-[#fed7aa] text-[#8a5327] rounded-md px-3 py-1 text-xs font-medium hover:bg-[#fde8cb] cursor-pointer shadow-2xs"
-                      >
-                        Action ▾
-                      </button>
-                    </td>
-                  </tr>
-
-                  {/* Row 2 matching SCR-018 */}
-                  <tr className="hover:bg-[#fbfcfb]">
-                    <td className="py-3.5 px-4 font-bold text-[#1c2826]">Harmanpreet Kaur</td>
-                    <td className="py-3.5 px-4">
-                      <span className="bg-[#f3f4f6] text-[#374151] rounded px-2.5 py-0.5 text-xs font-medium">
-                        Oct 30
-                      </span>
-                    </td>
-                    <td className="py-3.5 px-4">
-                      <button
-                        onClick={() => handleOpenPotentialAction('Harmanpreet Kaur')}
-                        className="bg-[#fff8ee] border border-[#fed7aa] text-[#8a5327] rounded-md px-3 py-1 text-xs font-medium hover:bg-[#fde8cb] cursor-pointer shadow-2xs"
-                      >
-                        Action ▾
-                      </button>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
+        <PotentialClientsTab
+          onOpenPotentialAction={handleOpenPotentialAction}
+        />
       )}
 
       {/* Potential Action Modal (SCR-021) */}
