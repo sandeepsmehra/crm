@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { APPLICATION_TYPES } from '@/data/mockData'
-import { staffAccessZodSchema, staffAccessYupSchema } from '@/lib/validations'
+import { staffAccessZodSchema, staffAccessYupSchema } from './settings.validation'
 import { toast } from '@/components/ui/sonner'
 import { ChevronRight, ChevronDown } from 'lucide-react'
 

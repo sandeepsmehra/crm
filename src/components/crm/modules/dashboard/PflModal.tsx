@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { PFLRecord, Matter } from '@/types/crm'
-import { pflZodSchema, pflYupSchema } from '@/lib/validations'
+import { pflZodSchema, pflYupSchema } from './dashboard.validation'
 import { toast } from '@/components/ui/sonner'
 import { STAFF_MEMBERS, TODAY } from '@/data/mockData'
 import { addDays } from '@/lib/crmUtils'

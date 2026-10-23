@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { Appointment, Client, AppointmentStatus } from '@/types/crm'
 import { APPLICATION_TYPES, CONSULTANTS, TODAY } from '@/data/mockData'
-import { appointmentZodSchema, appointmentYupSchema } from '@/lib/validations'
+import { appointmentZodSchema, appointmentYupSchema } from './appointments.validation'
 import { toast } from '@/components/ui/sonner'
 import { X, AlertCircle } from 'lucide-react'
 

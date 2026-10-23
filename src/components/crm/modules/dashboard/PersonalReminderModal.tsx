@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { PersonalReminder, Matter } from '@/types/crm'
-import { personalReminderZodSchema, personalReminderYupSchema } from '@/lib/validations'
+import { personalReminderZodSchema, personalReminderYupSchema } from './dashboard.validation'
 import { toast } from '@/components/ui/sonner'
 import { STAFF_MEMBERS, TODAY } from '@/data/mockData'
 import { X, AlertCircle } from 'lucide-react'

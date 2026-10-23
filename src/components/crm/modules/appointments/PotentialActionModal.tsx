@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { Client } from '@/types/crm'
-import { followUpZodSchema, followUpYupSchema } from '@/lib/validations'
+import { followUpZodSchema, followUpYupSchema } from './appointments.validation'
 import { toast } from '@/components/ui/sonner'
 import { STAFF_MEMBERS, TODAY } from '@/data/mockData'
 import { X, AlertCircle } from 'lucide-react'

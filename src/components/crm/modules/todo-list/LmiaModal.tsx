@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { Matter } from '@/types/crm'
-import { lmiaZodSchema, lmiaYupSchema } from '@/lib/validations'
+import { lmiaZodSchema, lmiaYupSchema } from './todoList.validation'
 import { toast } from '@/components/ui/sonner'
 import { STAFF_MEMBERS, TODAY } from '@/data/mockData'
 import { addDays } from '@/lib/crmUtils'

@@ -2,7 +2,7 @@ import React, { useState } from 'react'
 import { Client, ClientKind } from '@/types/crm'
 import { APPLICATION_TYPES } from '@/data/mockData'
 import { normalizePhone } from '@/lib/crmUtils'
-import { clientZodSchema, clientYupSchema } from '@/lib/validations'
+import { clientZodSchema, clientYupSchema } from './clients.validation'
 import { toast } from '@/components/ui/sonner'
 import { X, AlertCircle } from 'lucide-react'
 

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { ClientUpdate, Matter } from '@/types/crm'
-import { clientUpdateZodSchema, clientUpdateYupSchema } from '@/lib/validations'
+import { clientUpdateZodSchema, clientUpdateYupSchema } from './dashboard.validation'
 import { toast } from '@/components/ui/sonner'
 import { STAFF_MEMBERS, TODAY } from '@/data/mockData'
 import { X, ChevronDown, AlertCircle } from 'lucide-react'

@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import { SubmissionRecord } from '@/types/crm'
 import { TODAY, STAFF_MEMBERS } from '@/data/mockData'
-import { submissionZodSchema, submissionYupSchema } from '@/lib/validations'
+import { submissionZodSchema, submissionYupSchema } from './todoList.validation'
 import { toast } from '@/components/ui/sonner'
 import { X, Send, AlertCircle } from 'lucide-react'
 

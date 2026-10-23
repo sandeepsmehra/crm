@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { OfficeTask, Client } from '@/types/crm'
-import { officeTaskZodSchema, officeTaskYupSchema } from '@/lib/validations'
+import { officeTaskZodSchema, officeTaskYupSchema } from './taskManager.validation'
 import { toast } from '@/components/ui/sonner'
 import { TODAY, STAFF_MEMBERS } from '@/data/mockData'
 import { X, AlertCircle } from 'lucide-react'
