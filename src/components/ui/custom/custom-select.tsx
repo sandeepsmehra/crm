@@ -171,7 +171,7 @@ export function CustomSelect<T = any>({
   // Selected labels to display in the trigger
   const displayContent = React.useMemo(() => {
     if (selectedValues.size === 0) {
-      return <span className="text-muted-foreground">{placeholder}</span>;
+      return <span className="text-[#9ca3af]">{placeholder}</span>;
     }
 
     if (isMulti) {
@@ -180,7 +180,7 @@ export function CustomSelect<T = any>({
       );
 
       if (selectedItems.length === 0) {
-        return <span className="text-muted-foreground">{placeholder}</span>;
+        return <span className="text-[#9ca3af]">{placeholder}</span>;
       }
 
       return (
@@ -221,11 +221,11 @@ export function CustomSelect<T = any>({
       : null;
 
     if (!displayLabel || displayLabel === "[object Object]") {
-      return <span className="text-muted-foreground">{placeholder}</span>;
+      return <span className="text-[#9ca3af]">{placeholder}</span>;
     }
 
     return (
-      <span className="truncate text-foreground">
+      <span className="truncate">
         {displayLabel}
       </span>
     );
@@ -246,24 +246,24 @@ export function CustomSelect<T = any>({
         }}
       >
         <PopoverTrigger asChild>
-          <Button
+          <button
             id={id}
             type="button"
-            variant="outline"
             role="combobox"
             aria-expanded={open}
             aria-label={ariaLabel || name}
             aria-invalid={invalid}
             disabled={isDisabled}
             className={cn(
-              "w-full justify-between items-center bg-background text-left font-normal h-auto min-h-9 px-3 py-1.5 border border-input shadow-xs transition-colors hover:bg-background/80 focus-visible:ring-1 focus-visible:ring-ring",
-              invalid && "border-destructive focus-visible:ring-destructive",
-              isDisabled && "opacity-50 cursor-not-allowed",
+              "w-full flex justify-between items-center text-left font-normal min-h-9 px-3 py-1.5 rounded-md border border-[#cbd5d1] bg-white text-[#1c2826] text-[13.5px] transition-all duration-150 cursor-pointer outline-none focus:ring-1 focus:ring-[#9f5832]",
+              "hover:brightness-95 hover:border-[#9ca3af]",
+              invalid && "border-red-500 focus:ring-red-500",
+              isDisabled && "opacity-50 cursor-not-allowed pointer-events-none",
               triggerClassName
             )}
           >
             <div className="flex-1 min-w-0 pr-2 overflow-hidden">{displayContent}</div>
-            <div className="flex items-center gap-1 shrink-0 text-muted-foreground">
+            <div className="flex items-center gap-1 shrink-0 text-current opacity-70">
               {isLoading ? (
                 <Loader2 className="size-4 animate-spin opacity-60" />
               ) : (
@@ -272,7 +272,7 @@ export function CustomSelect<T = any>({
                     <span
                       role="button"
                       tabIndex={0}
-                      className="p-0.5 hover:text-foreground transition-colors cursor-pointer rounded-sm"
+                      className="p-0.5 hover:opacity-100 transition-opacity cursor-pointer rounded-sm"
                       onClick={handleClear}
                       onKeyDown={(e) => {
                         if (e.key === "Enter" || e.key === " ") {
@@ -285,36 +285,36 @@ export function CustomSelect<T = any>({
                       <X className="size-3.5" />
                     </span>
                   )}
-                  <ChevronDown className="size-4 opacity-50 transition-transform duration-200" />
+                  <ChevronDown className={cn("size-4 transition-transform duration-200", open && "rotate-180")} />
                 </>
               )}
             </div>
-          </Button>
+          </button>
         </PopoverTrigger>
 
         <PopoverContent
           align="start"
           className={cn(
-            "w-[var(--radix-popover-trigger-width)] min-w-[200px] max-h-[var(--radix-popover-content-available-height,320px)] flex flex-col p-0 shadow-lg border border-border bg-popover text-popover-foreground z-50 overflow-hidden",
+            "w-[var(--radix-popover-trigger-width)] min-w-[200px] max-h-[var(--radix-popover-content-available-height,320px)] flex flex-col p-0 shadow-xl border border-[#e5e7eb] bg-white text-[#1c2826] z-50 overflow-hidden rounded-md",
             contentClassName
           )}
         >
           {isSearchable && (
-            <div className="flex items-center shrink-0 border-b border-border px-3 py-2">
-              <Search className="mr-2 size-4 shrink-0 text-muted-foreground" />
+            <div className="flex items-center shrink-0 border-b border-[#e5e7eb] px-3 py-2 bg-[#f9fafb]">
+              <Search className="mr-2 size-4 shrink-0 text-[#6b7280]" />
               <input
                 type="text"
                 placeholder="Search..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+                className="w-full bg-transparent text-sm outline-none placeholder:text-[#9ca3af] text-[#1c2826]"
                 autoFocus
               />
               {searchQuery && (
                 <button
                   type="button"
                   onClick={() => setSearchQuery("")}
-                  className="text-muted-foreground hover:text-foreground"
+                  className="text-[#6b7280] hover:text-[#1c2826]"
                 >
                   <X className="size-3.5" />
                 </button>
@@ -324,7 +324,7 @@ export function CustomSelect<T = any>({
 
           {isMulti && options.length > 0 && !searchQuery && (
             <div
-              className="flex items-center shrink-0 gap-2 px-3 py-2 border-b border-border/60 hover:bg-accent/50 cursor-pointer text-sm font-medium"
+              className="flex items-center shrink-0 gap-2 px-3 py-2 border-b border-[#e5e7eb] hover:bg-[#edf3ef] cursor-pointer text-sm font-medium text-[#1c2826]"
               onClick={handleSelectAllToggle}
             >
               <Checkbox checked={isAllSelected} onCheckedChange={handleSelectAllToggle} />
@@ -332,9 +332,9 @@ export function CustomSelect<T = any>({
             </div>
           )}
 
-          <div className="flex-1 min-h-0 max-h-60 overflow-y-auto overscroll-contain p-1 scrollbar-thin">
+          <div className="flex-1 min-h-0 max-h-60 overflow-y-auto overscroll-contain p-1.5 scrollbar-thin">
             {filteredOptions.length === 0 ? (
-              <div className="py-6 text-center text-sm text-muted-foreground">
+              <div className="py-6 text-center text-sm text-[#6b7280]">
                 No options found.
               </div>
             ) : (
@@ -350,10 +350,10 @@ export function CustomSelect<T = any>({
                     key={optVal}
                     onClick={() => !disabled && handleOptionClick(option)}
                     className={cn(
-                      "flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-sm text-sm cursor-pointer transition-colors select-none",
+                      "flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-md text-[13px] cursor-pointer transition-colors select-none text-[#1c2826]",
                       isSelected
-                        ? "bg-accent text-accent-foreground font-medium"
-                        : "hover:bg-accent/50 text-foreground",
+                        ? "bg-[#edf7f0] text-[#126b48] font-semibold hover:bg-[#dff0e4]"
+                        : "hover:bg-[#edf3ef] hover:text-[#0d3829]",
                       disabled && "opacity-50 pointer-events-none cursor-not-allowed"
                     )}
                   >
@@ -368,7 +368,7 @@ export function CustomSelect<T = any>({
                       <span className="truncate">{optLabel}</span>
                     </div>
                     {!isMulti && isSelected && (
-                      <Check className="size-4 shrink-0 text-primary" />
+                      <Check className="size-4 shrink-0 text-[#166534]" />
                     )}
                   </div>
                 );
