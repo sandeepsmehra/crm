@@ -81,12 +81,12 @@ export const officeTaskYupSchema = yup.object().shape({
 // ==========================================
 export const clientUpdateZodSchema = z.object({
   date: z.string().min(1, 'Date is required'),
-  clientName: z.string().min(2, 'Client name is required'),
-  applicationType: z.string().min(1, 'Application type is required'),
-  updateType: z.enum(['Approved', 'Refused', 'Documents Requested', 'Other']),
-  checkedBy: z.string().min(1, 'Checked by case manager is required'),
-  comments: z.string().min(1, 'Comments / explanation is required'),
-  status: z.enum(['Not Sent', 'Pending Further', 'Sent']),
+  clientName: z.string().min(1, 'Client name is required'),
+  applicationType: z.string().optional(),
+  updateType: z.string().min(1, 'Update type is required'),
+  checkedBy: z.string().optional(),
+  comments: z.string().optional(),
+  status: z.enum(['Not Sent', 'Pending Further', 'Sent']).optional(),
   method: z.string().optional(),
   sentBy: z.string().optional()
 })
@@ -96,9 +96,7 @@ export type ClientUpdateFormValues = z.infer<typeof clientUpdateZodSchema>
 export const clientUpdateYupSchema = yup.object().shape({
   date: yup.string().required('Date is required'),
   clientName: yup.string().required('Client name is required'),
-  applicationType: yup.string().required('Application type is required'),
-  updateType: yup.string().required('Update type is required'),
-  comments: yup.string().required('Comments are required')
+  updateType: yup.string().required('Update type is required')
 })
 
 // ==========================================

@@ -47,13 +47,20 @@ export function DashboardView({
 
   // Modals
   const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false)
+  const [selectedUpdateForEdit, setSelectedUpdateForEdit] = useState<ClientUpdate | null>(null)
   const [isPflModalOpen, setIsPflModalOpen] = useState(false)
   const [isReminderModalOpen, setIsReminderModalOpen] = useState(false)
   const [selectedArticle, setSelectedArticle] = useState<NewsArticle | null>(null)
 
   // Handlers
   const handleSaveUpdate = (update: ClientUpdate) => {
-    setClientUpdates([update, ...clientUpdates])
+    setClientUpdates((prev) => {
+      const exists = prev.some((u) => u.id === update.id)
+      if (exists) {
+        return prev.map((u) => (u.id === update.id ? update : u))
+      }
+      return [update, ...prev]
+    })
   }
 
   const handleSaveReminder = (reminder: PersonalReminder) => {
@@ -427,7 +434,10 @@ export function DashboardView({
           <div className="flex items-center justify-between">
             <h2 className="text-[22px] font-bold text-[#1c2826]">Client Updates</h2>
             <button
-              onClick={() => setIsUpdateModalOpen(true)}
+              onClick={() => {
+                setSelectedUpdateForEdit(null)
+                setIsUpdateModalOpen(true)
+              }}
               className="px-4 py-2 bg-[#a75928] hover:bg-[#924c1f] text-white rounded-md text-sm font-medium transition-colors shadow-2xs cursor-pointer"
             >
               + Create an Update
@@ -454,7 +464,7 @@ export function DashboardView({
                   : 'bg-white border border-[#e5e7eb] text-[#374151]'
               }`}
             >
-              Update Sent ({clientUpdates.filter((u) => u.status === 'Sent').length})
+              Update Sent ({clientUpdates.filter((u) => u.status === 'Sent' || u.actionStatus === 'Sent').length})
             </button>
           </div>
 
@@ -484,10 +494,11 @@ export function DashboardView({
                       <td className="py-3.5 px-4 text-[#1c2826] max-w-xs whitespace-pre-line">{item.comments}</td>
                       <td className="py-3.5 px-4">
                         <div className="font-bold text-[#1c2826]">
-                          {item.status === 'Sent' ? 'Sent' : 'Not Sent'}
+                          {item.status === 'Sent' || item.actionStatus === 'Sent' ? 'Sent' : 'Not Sent'}
                         </div>
                         <button
                           onClick={() => {
+                            setSelectedUpdateForEdit(item)
                             setIsUpdateModalOpen(true)
                           }}
                           className="text-[12px] text-[#1c2826] hover:underline cursor-pointer block mt-0.5"
@@ -868,9 +879,13 @@ export function DashboardView({
       {/* Modals for Dashboard Views */}
       <ClientUpdateModal
         isOpen={isUpdateModalOpen}
-        onClose={() => setIsUpdateModalOpen(false)}
+        onClose={() => {
+          setIsUpdateModalOpen(false)
+          setSelectedUpdateForEdit(null)
+        }}
         onSave={handleSaveUpdate}
         matters={matters}
+        initialUpdate={selectedUpdateForEdit}
       />
 
       <PflModal
