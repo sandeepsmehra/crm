@@ -51,7 +51,7 @@ export function DemoBanner({ currentView, onResetDemo }: DemoBannerProps) {
   ].includes(currentView || '')
 
   return (
-    <div className="bg-[#f2e9dc] text-[#6e5842] border-b border-[#e5dacf] px-4 sm:px-8 py-1.5 text-xs flex flex-wrap items-center justify-between gap-2 select-none shadow-2xs">
+    <div className="bg-[#f2e9dc] text-[#6e5842] border-b border-[#e5dacf] px-4 sm:px-8 py-1.5 text-xs flex flex-wrap items-center justify-between gap-2 select-none shadow-2xs shrink-0">
       <div className="font-normal text-[#5a4530]">
         {isDocumentReviewView
           ? 'Invalid document review record · seedy@sites.test · owner'

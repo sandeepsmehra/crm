@@ -486,7 +486,7 @@ export function App() {
   }
 
   return (
-    <div className="min-h-screen bg-[#f7f9f8] flex text-[#1c2826] relative overflow-x-hidden">
+    <div className="h-screen max-h-screen w-full bg-[#f7f9f8] flex text-[#1c2826] relative overflow-hidden">
       {/* Navigation Sidebar (Responsive drawer on mobile/tablet, fixed column on desktop) */}
       <NationriseSidebar
         currentView={currentView}
@@ -498,8 +498,8 @@ export function App() {
         onCloseMobile={() => setIsMobileSidebarOpen(false)}
       />
 
-      {/* Main Content Area */}
-      <div className="flex-1 flex flex-col min-w-0">
+      {/* Main Content Area with independent scroll container */}
+      <div className="flex-1 flex flex-col h-screen max-h-screen min-w-0 overflow-hidden">
         <NationriseTopBar
           currentView={currentView}
           searchQuery={searchQuery}
@@ -509,7 +509,7 @@ export function App() {
 
         <DemoBanner currentView={currentView} onResetDemo={handleResetDemo} />
 
-        <main className="flex-1 px-4 sm:px-8 py-5 w-full mx-auto transition-all">
+        <main className="flex-1 overflow-y-auto px-4 sm:px-8 py-5 w-full mx-auto transition-all page-scroll">
           {/* VIEW ROUTING */}
           {currentView === 'Dashboard' && (
             <DashboardView

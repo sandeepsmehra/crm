@@ -65,7 +65,7 @@ export function NationriseTopBar({
   ].includes(currentView)
 
   return (
-    <header className="bg-[#f7f9f8] px-4 sm:px-8 pt-3 pb-2 flex items-center justify-between gap-4 select-none">
+    <header className="bg-[#f7f9f8] px-4 sm:px-8 pt-3 pb-2 flex items-center justify-between gap-4 select-none shrink-0 border-b border-[#e2e8e5]/60">
       <div className="flex items-center gap-3 flex-1 min-w-0">
         {/* Mobile / Tablet Menu Button */}
         {onToggleMobileMenu && (
