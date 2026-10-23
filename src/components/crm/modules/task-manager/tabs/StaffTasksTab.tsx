@@ -1,5 +1,6 @@
 import React from 'react'
 import { OfficeTask } from '@/types/crm'
+import { CustomSelect } from '@/components/ui/custom/custom-select'
 
 interface StaffTasksTabProps {
   subTab: 'Active Tasks' | 'Completed Tasks'
@@ -45,17 +46,20 @@ export function StaffTasksTab({
           Completed Tasks <span className="ml-0.5">1</span>
         </button>
 
-        <select
-          value={selectedManager}
-          onChange={(e) => onManagerChange(e.target.value)}
-          className="bg-[#ebf3fc] border border-[#d2e3f8] text-[#1c385c] rounded-md px-3 py-1.5 text-xs font-medium outline-none cursor-pointer"
-        >
-          <option value="All">All Case Managers ▾</option>
-          <option value="Amanpreet">Amanpreet</option>
-          <option value="Inderpreet">Inderpreet</option>
-          <option value="Sukhman">Sukhman</option>
-          <option value="Tejinder">Tejinder</option>
-        </select>
+        <div className="w-48">
+          <CustomSelect
+            value={selectedManager}
+            options={[
+              { value: "All", label: "All Case Managers" },
+              { value: "Amanpreet", label: "Amanpreet" },
+              { value: "Inderpreet", label: "Inderpreet" },
+              { value: "Sukhman", label: "Sukhman" },
+              { value: "Tejinder", label: "Tejinder" }
+            ]}
+            onChange={(val) => onManagerChange(val)}
+            triggerClassName="bg-[#ebf3fc] border-[#d2e3f8] text-[#1c385c] rounded-md px-3 py-1 text-xs font-medium h-8"
+          />
+        </div>
       </div>
 
       <div className="pt-2">
@@ -114,21 +118,20 @@ export function StaffTasksTab({
                       </span>
                     </td>
                     <td className="py-3.5 px-4">
-                      <select
-                        defaultValue="Pending"
-                        onChange={(e) => {
-                          if (e.target.value === 'Completed') {
-                            onCompleteTask(tasks[0])
-                          } else {
-                            onChangeStatus(tasks[0]?.id || '1', e.target.value as any)
-                          }
-                        }}
-                        className="bg-[#fff8ee] border border-[#fbd8ab] text-[#8a5327] rounded-md px-2.5 py-1 text-xs font-medium outline-none cursor-pointer"
-                      >
-                        <option value="Pending">Pending ▾</option>
-                        <option value="In Progress">In Progress</option>
-                        <option value="Completed">Completed</option>
-                      </select>
+                      <div className="w-32">
+                        <CustomSelect
+                          value={tasks[0]?.status || "Pending"}
+                          options={["Pending", "In Progress", "Completed"]}
+                          onChange={(val) => {
+                            if (val === 'Completed') {
+                              onCompleteTask(tasks[0])
+                            } else {
+                              onChangeStatus(tasks[0]?.id || '1', val as any)
+                            }
+                          }}
+                          triggerClassName="bg-[#fff8ee] border-[#fbd8ab] text-[#8a5327] rounded-md px-2 py-1 text-xs font-medium h-7"
+                        />
+                      </div>
                     </td>
                   </tr>
                   <tr className="hover:bg-[#fbfcfb]">
@@ -144,21 +147,20 @@ export function StaffTasksTab({
                       </span>
                     </td>
                     <td className="py-3.5 px-4">
-                      <select
-                        defaultValue="Pending"
-                        onChange={(e) => {
-                          if (e.target.value === 'Completed') {
-                            onCompleteTask(tasks[1])
-                          } else {
-                            onChangeStatus(tasks[1]?.id || '2', e.target.value as any)
-                          }
-                        }}
-                        className="bg-[#fff8ee] border border-[#fbd8ab] text-[#8a5327] rounded-md px-2.5 py-1 text-xs font-medium outline-none cursor-pointer"
-                      >
-                        <option value="Pending">Pending ▾</option>
-                        <option value="In Progress">In Progress</option>
-                        <option value="Completed">Completed</option>
-                      </select>
+                      <div className="w-32">
+                        <CustomSelect
+                          value={tasks[1]?.status || "Pending"}
+                          options={["Pending", "In Progress", "Completed"]}
+                          onChange={(val) => {
+                            if (val === 'Completed') {
+                              onCompleteTask(tasks[1])
+                            } else {
+                              onChangeStatus(tasks[1]?.id || '2', val as any)
+                            }
+                          }}
+                          triggerClassName="bg-[#fff8ee] border-[#fbd8ab] text-[#8a5327] rounded-md px-2 py-1 text-xs font-medium h-7"
+                        />
+                      </div>
                     </td>
                   </tr>
                   <tr className="hover:bg-[#fbfcfb]">
@@ -174,21 +176,20 @@ export function StaffTasksTab({
                       </span>
                     </td>
                     <td className="py-3.5 px-4">
-                      <select
-                        defaultValue="Pending"
-                        onChange={(e) => {
-                          if (e.target.value === 'Completed') {
-                            onCompleteTask(tasks[2])
-                          } else {
-                            onChangeStatus(tasks[2]?.id || '3', e.target.value as any)
-                          }
-                        }}
-                        className="bg-[#fff8ee] border border-[#fbd8ab] text-[#8a5327] rounded-md px-2.5 py-1 text-xs font-medium outline-none cursor-pointer"
-                      >
-                        <option value="Pending">Pending ▾</option>
-                        <option value="In Progress">In Progress</option>
-                        <option value="Completed">Completed</option>
-                      </select>
+                      <div className="w-32">
+                        <CustomSelect
+                          value={tasks[2]?.status || "Pending"}
+                          options={["Pending", "In Progress", "Completed"]}
+                          onChange={(val) => {
+                            if (val === 'Completed') {
+                              onCompleteTask(tasks[2])
+                            } else {
+                              onChangeStatus(tasks[2]?.id || '3', val as any)
+                            }
+                          }}
+                          triggerClassName="bg-[#fff8ee] border-[#fbd8ab] text-[#8a5327] rounded-md px-2 py-1 text-xs font-medium h-7"
+                        />
+                      </div>
                     </td>
                   </tr>
                 </>

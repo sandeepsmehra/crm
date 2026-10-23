@@ -1,5 +1,6 @@
 import React from 'react'
 import { OfficeTask } from '@/types/crm'
+import { CustomSelect } from '@/components/ui/custom/custom-select'
 
 interface RemindersTabProps {
   selectedManager: string
@@ -24,17 +25,20 @@ export function RemindersTab({
           Calls waiting 3+ days <span className="ml-1">5</span>
         </button>
 
-        <select
-          value={selectedManager}
-          onChange={(e) => onManagerChange(e.target.value)}
-          className="bg-[#ebf3fc] border border-[#d2e3f8] text-[#1c385c] rounded-md px-3 py-1.5 text-xs font-medium outline-none cursor-pointer"
-        >
-          <option value="All">All Case Managers ▾</option>
-          <option value="Amanpreet">Amanpreet</option>
-          <option value="Inderpreet">Inderpreet</option>
-          <option value="Sukhman">Sukhman</option>
-          <option value="Tejinder">Tejinder</option>
-        </select>
+        <div className="w-48">
+          <CustomSelect
+            value={selectedManager}
+            options={[
+              { value: "All", label: "All Case Managers" },
+              { value: "Amanpreet", label: "Amanpreet" },
+              { value: "Inderpreet", label: "Inderpreet" },
+              { value: "Sukhman", label: "Sukhman" },
+              { value: "Tejinder", label: "Tejinder" }
+            ]}
+            onChange={(val) => onManagerChange(val)}
+            triggerClassName="bg-[#ebf3fc] border-[#d2e3f8] text-[#1c385c] rounded-md px-3 py-1 text-xs font-medium h-8"
+          />
+        </div>
       </div>
 
       <div className="pt-2">

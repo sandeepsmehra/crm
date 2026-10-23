@@ -4,6 +4,7 @@ import { TODAY } from '@/data/mockData'
 import { addDays } from '@/lib/crmUtils'
 import { X, AlertCircle } from 'lucide-react'
 import { toast } from '@/components/ui/sonner'
+import { CustomSelect } from '@/components/ui/custom/custom-select'
 import { deadlineZodSchema } from './deadlineCentre.validation'
 
 interface DeadlineModalProps {
@@ -101,22 +102,21 @@ export function DeadlineModal({
 
           <div>
             <label className="block font-semibold text-[#202d2d] mb-1">Application Matter</label>
-            <select
+            <CustomSelect
               value={matterId}
-              onChange={(e) => {
-                setMatterId(e.target.value)
+              options={matters.map((m) => ({
+                value: m.id,
+                label: `${m.name} · ${m.type} (${m.id})`
+              }))}
+              onChange={(val) => {
+                setMatterId(val)
                 if (fieldErrors.matterId) setFieldErrors((prev) => ({ ...prev, matterId: '' }))
               }}
-              className={`w-full p-2 border ${
+              invalid={!!fieldErrors.matterId}
+              triggerClassName={`w-full bg-white text-[#202d2d] ${
                 fieldErrors.matterId ? 'border-red-500 ring-1 ring-red-500' : 'border-[#cbd5d1]'
-              } rounded-md bg-white outline-none`}
-            >
-              {matters.map((m) => (
-                <option key={m.id} value={m.id}>
-                  {m.name} · {m.type} ({m.id})
-                </option>
-              ))}
-            </select>
+              }`}
+            />
             {fieldErrors.matterId && (
               <p className="mt-1 text-[11.5px] text-red-600 font-medium">⚠️ {fieldErrors.matterId}</p>
             )}
@@ -124,15 +124,16 @@ export function DeadlineModal({
 
           <div>
             <label className="block font-semibold text-[#202d2d] mb-1">Deadline Type</label>
-            <select
+            <CustomSelect
               value={kind}
-              onChange={(e) => setKind(e.target.value as DeadlineKind)}
-              className="w-full p-2 border border-[#cbd5d1] rounded-md bg-white outline-none font-medium"
-            >
-              <option value="Hard Deadline">Hard Legal Deadline (Statutory / Officer Letter)</option>
-              <option value="Internal Target">Internal Management Target</option>
-              <option value="Normal Task Deadline">Normal Task Deadline</option>
-            </select>
+              options={[
+                { value: "Hard Deadline", label: "Hard Legal Deadline (Statutory / Officer Letter)" },
+                { value: "Internal Target", label: "Internal Management Target" },
+                { value: "Normal Task Deadline", label: "Normal Task Deadline" }
+              ]}
+              onChange={(val) => setKind(val as DeadlineKind)}
+              triggerClassName="w-full border-[#cbd5d1] bg-white font-medium text-[#202d2d]"
+            />
           </div>
 
           <div>

@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 import { Matter } from '@/types/crm'
 import { Upload, Send } from 'lucide-react'
 import { toast } from '@/components/ui/sonner'
+import { CustomSelect } from '@/components/ui/custom/custom-select'
 
 interface ClientPortalPreviewProps {
   matters: Matter[]
@@ -71,18 +72,18 @@ export function ClientPortalPreview({
         </div>
 
         <div className="flex items-center gap-2">
-          <label className="text-[12px] font-semibold text-[#677472]">Preview client:</label>
-          <select
-            value={currentMatter.id}
-            onChange={(e) => onSelectMatter(e.target.value)}
-            className="py-1.5 px-3 bg-white border border-[#cbd5d1] rounded-md text-[13px] text-[#202d2d] font-semibold outline-none"
-          >
-            {matters.map((m) => (
-              <option key={m.id} value={m.id}>
-                {m.name} · {m.type}
-              </option>
-            ))}
-          </select>
+          <label className="text-[12px] font-semibold text-[#677472] shrink-0">Preview client:</label>
+          <div className="w-56">
+            <CustomSelect
+              value={currentMatter.id}
+              options={matters.map((m) => ({
+                value: m.id,
+                label: `${m.name} · ${m.type}`
+              }))}
+              onChange={(val) => onSelectMatter(val)}
+              triggerClassName="bg-white border-[#cbd5d1] rounded-md text-[13px] text-[#202d2d] font-semibold h-8"
+            />
+          </div>
         </div>
       </div>
 
@@ -162,14 +163,14 @@ export function ClientPortalPreview({
             <label className="block font-semibold text-[#202d2d] mb-1">
               Have you been married before?
             </label>
-            <select
-              value={qMarried}
-              onChange={(e) => setQMarried(e.target.value)}
-              className="p-2 border border-[#cbd5d1] rounded-md bg-white outline-none"
-            >
-              <option value="No">No</option>
-              <option value="Yes">Yes</option>
-            </select>
+            <div className="w-36">
+              <CustomSelect
+                value={qMarried}
+                options={["No", "Yes"]}
+                onChange={(val) => setQMarried(val)}
+                triggerClassName="border-[#cbd5d1] bg-white text-[#202d2d] h-9"
+              />
+            </div>
           </div>
 
           <button

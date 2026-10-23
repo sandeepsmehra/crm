@@ -5,6 +5,7 @@ import { toast } from '@/components/ui/sonner'
 import { STAFF_MEMBERS, TODAY } from '@/data/mockData'
 import { addDays } from '@/lib/crmUtils'
 import { X, Briefcase, AlertCircle } from 'lucide-react'
+import { CustomSelect } from '@/components/ui/custom/custom-select'
 
 interface LmiaModalProps {
   isOpen: boolean
@@ -200,17 +201,18 @@ export function LmiaModal({
             </div>
             <div>
               <label className="block font-semibold text-[#202d2d] mb-1">ESDC Stream</label>
-              <select
+              <CustomSelect
                 value={stream}
-                onChange={(e) => setStream(e.target.value)}
-                className="w-full p-2 border border-[#cbd5d1] rounded-md bg-white outline-none focus:border-[#246b54]"
-              >
-                <option value="High-wage">High-wage Stream</option>
-                <option value="Low-wage">Low-wage Stream</option>
-                <option value="Global Talent Stream">Global Talent Stream</option>
-                <option value="Permanent Residence Supporting">PR Supporting</option>
-                <option value="Agricultural Stream">Agricultural Stream</option>
-              </select>
+                options={[
+                  { value: "High-wage", label: "High-wage Stream" },
+                  { value: "Low-wage", label: "Low-wage Stream" },
+                  { value: "Global Talent Stream", label: "Global Talent Stream" },
+                  { value: "Permanent Residence Supporting", label: "PR Supporting" },
+                  { value: "Agricultural Stream", label: "Agricultural Stream" }
+                ]}
+                onChange={(val) => setStream(val)}
+                triggerClassName="w-full border-[#cbd5d1] bg-white text-[#202d2d]"
+              />
             </div>
           </div>
 
@@ -278,30 +280,28 @@ export function LmiaModal({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="block font-semibold text-[#202d2d] mb-1">Assigned Case Manager</label>
-              <select
+              <CustomSelect
                 value={owner}
-                onChange={(e) => setOwner(e.target.value)}
-                className="w-full p-2 border border-[#cbd5d1] rounded-md bg-white outline-none focus:border-[#246b54]"
-              >
-                {STAFF_MEMBERS.map((s) => (
-                  <option key={s} value={s}>{s}</option>
-                ))}
-              </select>
+                options={STAFF_MEMBERS}
+                onChange={(val) => setOwner(val)}
+                triggerClassName="w-full border-[#cbd5d1] bg-white text-[#202d2d]"
+              />
             </div>
             <div>
               <label className="block font-semibold text-[#202d2d] mb-1">Current Status</label>
-              <select
+              <CustomSelect
                 value={status}
-                onChange={(e) => setStatus(e.target.value)}
-                className="w-full p-2 border border-[#cbd5d1] rounded-md bg-white outline-none focus:border-[#246b54]"
-              >
-                <option value="Advertising">Advertising (28-day countdown)</option>
-                <option value="Candidate Screening">Candidate Screening / Interviews</option>
-                <option value="Preparing Submission">Preparing Submission</option>
-                <option value="Submitted">Submitted to ESDC</option>
-                <option value="Approved">Positive LMIA Issued</option>
-                <option value="Refused">Refused</option>
-              </select>
+                options={[
+                  { value: "Advertising", label: "Advertising (28-day countdown)" },
+                  { value: "Candidate Screening", label: "Candidate Screening / Interviews" },
+                  { value: "Preparing Submission", label: "Preparing Submission" },
+                  { value: "Submitted", label: "Submitted to ESDC" },
+                  { value: "Approved", label: "Positive LMIA Issued" },
+                  { value: "Refused", label: "Refused" }
+                ]}
+                onChange={(val) => setStatus(val)}
+                triggerClassName="w-full border-[#cbd5d1] bg-white text-[#202d2d]"
+              />
             </div>
           </div>
 

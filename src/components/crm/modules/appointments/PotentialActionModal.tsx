@@ -4,6 +4,7 @@ import { followUpZodSchema, followUpYupSchema } from './appointments.validation'
 import { toast } from '@/components/ui/sonner'
 import { STAFF_MEMBERS, TODAY } from '@/data/mockData'
 import { X, AlertCircle } from 'lucide-react'
+import { CustomSelect } from '@/components/ui/custom/custom-select'
 
 export interface PotentialActionModalProps {
   isOpen: boolean
@@ -155,15 +156,12 @@ export function PotentialActionModal({
             </div>
             <div>
               <label className="block font-semibold text-[#202d2d] mb-1">Assigned Manager</label>
-              <select
+              <CustomSelect
                 value={caseManager}
-                onChange={(e) => setCaseManager(e.target.value)}
-                className="w-full p-2 border border-[#cbd5d1] rounded-md bg-white outline-none focus:border-[#246b54]"
-              >
-                {STAFF_MEMBERS.map((s) => (
-                  <option key={s} value={s}>{s}</option>
-                ))}
-              </select>
+                options={STAFF_MEMBERS}
+                onChange={(val) => setCaseManager(val)}
+                triggerClassName="w-full border-[#cbd5d1] bg-white text-[#202d2d]"
+              />
             </div>
           </div>
 

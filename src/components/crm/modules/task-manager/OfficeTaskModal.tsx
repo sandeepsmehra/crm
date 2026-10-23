@@ -4,6 +4,7 @@ import { officeTaskZodSchema, officeTaskYupSchema } from './taskManager.validati
 import { toast } from '@/components/ui/sonner'
 import { TODAY, STAFF_MEMBERS } from '@/data/mockData'
 import { X, AlertCircle } from 'lucide-react'
+import { CustomSelect } from '@/components/ui/custom/custom-select'
 
 interface OfficeTaskModalProps {
   isOpen: boolean
@@ -162,18 +163,20 @@ export function OfficeTaskModal({
 
           <div>
             <label className="block font-semibold text-[#202d2d] mb-1">Related Client (Optional)</label>
-            <select
+            <CustomSelect
               value={clientId}
-              onChange={(e) => setClientId(e.target.value)}
-              className="w-full p-2 border border-[#cbd5d1] rounded-md bg-white outline-none focus:border-[#246b54]"
-            >
-              <option value="">General inquiry / No client file linked</option>
-              {clients.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name} · {c.phone}
-                </option>
-              ))}
-            </select>
+              placeholder="General inquiry / No client file linked"
+              isClearable
+              options={[
+                { value: "", label: "General inquiry / No client file linked" },
+                ...clients.map((c) => ({
+                  value: c.id,
+                  label: `${c.name} · ${c.phone}`
+                }))
+              ]}
+              onChange={(val) => setClientId(val)}
+              triggerClassName="w-full border-[#cbd5d1] bg-white text-[#202d2d]"
+            />
           </div>
 
           <div>
@@ -202,29 +205,25 @@ export function OfficeTaskModal({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="block font-semibold text-[#202d2d] mb-1">Assigned To</label>
-              <select
+              <CustomSelect
                 value={assignedTo}
-                onChange={(e) => setAssignedTo(e.target.value)}
-                className="w-full p-2 border border-[#cbd5d1] rounded-md bg-white outline-none focus:border-[#246b54]"
-              >
-                {STAFF_MEMBERS.map((s) => (
-                  <option key={s} value={s}>{s}</option>
-                ))}
-              </select>
+                options={STAFF_MEMBERS}
+                onChange={(val) => setAssignedTo(val)}
+                triggerClassName="w-full border-[#cbd5d1] bg-white text-[#202d2d]"
+              />
             </div>
             <div>
               <label className="block font-semibold text-[#202d2d] mb-1">Assigned By</label>
-              <select
+              <CustomSelect
                 value={assignedBy}
-                onChange={(e) => setAssignedBy(e.target.value)}
-                className="w-full p-2 border border-[#cbd5d1] rounded-md bg-white outline-none focus:border-[#246b54]"
-              >
-                <option value="Reception">Reception</option>
-                <option value="Tejinder">Tejinder</option>
-                {STAFF_MEMBERS.map((s) => (
-                  <option key={s} value={s}>{s}</option>
-                ))}
-              </select>
+                options={[
+                  "Reception",
+                  "Tejinder",
+                  ...STAFF_MEMBERS.filter(s => s !== 'Tejinder')
+                ]}
+                onChange={(val) => setAssignedBy(val)}
+                triggerClassName="w-full border-[#cbd5d1] bg-white text-[#202d2d]"
+              />
             </div>
           </div>
 
@@ -261,14 +260,12 @@ export function OfficeTaskModal({
             </div>
             <div>
               <label className="block font-semibold text-[#202d2d] mb-1">Priority</label>
-              <select
+              <CustomSelect
                 value={priority}
-                onChange={(e) => setPriority(e.target.value as any)}
-                className="w-full p-2 border border-[#cbd5d1] rounded-md bg-white outline-none focus:border-[#246b54]"
-              >
-                <option value="Normal">Normal</option>
-                <option value="Urgent">Urgent</option>
-              </select>
+                options={["Normal", "Urgent"]}
+                onChange={(val) => setPriority(val as any)}
+                triggerClassName="w-full border-[#cbd5d1] bg-white text-[#202d2d]"
+              />
             </div>
           </div>
 

@@ -3,6 +3,7 @@ import { Matter, BallHolder } from '@/types/crm'
 import { STAFF_MEMBERS } from '@/data/mockData'
 import { X, AlertCircle } from 'lucide-react'
 import { toast } from '@/components/ui/sonner'
+import { CustomSelect } from '@/components/ui/custom/custom-select'
 import { editAssignmentModalZodSchema } from './matter.validation'
 
 interface EditAssignmentModalProps {
@@ -99,39 +100,38 @@ export function EditAssignmentModal({
 
           <div>
             <label className="block font-semibold text-[#202d2d] mb-1">Case Manager</label>
-            <select
+            <CustomSelect
               value={owner}
-              onChange={(e) => {
-                setOwner(e.target.value)
+              options={STAFF_MEMBERS.map((s) => ({
+                value: s,
+                label: `${s} (${getWorkload(s)} open tasks)`
+              }))}
+              onChange={(val) => {
+                setOwner(val)
                 if (fieldErrors.owner) setFieldErrors((prev) => ({ ...prev, owner: '' }))
               }}
-              className="w-full p-2 border border-[#cbd5d1] rounded-md bg-white outline-none font-medium"
-            >
-              {STAFF_MEMBERS.map((s) => (
-                <option key={s} value={s}>
-                  {s} ({getWorkload(s)} open tasks)
-                </option>
-              ))}
-            </select>
+              triggerClassName="w-full border-[#cbd5d1] bg-white font-medium text-[#202d2d]"
+            />
           </div>
 
           <div>
             <label className="block font-semibold text-[#202d2d] mb-1">Who has the ball?</label>
-            <select
+            <CustomSelect
               value={ball}
-              onChange={(e) => {
-                setBall(e.target.value as BallHolder)
+              options={[
+                { value: "Case Manager", label: "Case Manager (Staff working)" },
+                { value: "Client", label: "Client (Awaiting documents/info)" },
+                { value: "RCIC", label: "RCIC (Awaiting review approval)" },
+                { value: "Government", label: "Government (Under IRCC/CBSA processing)" },
+                { value: "Reception", label: "Reception" },
+                { value: "Third Party", label: "Third Party" }
+              ]}
+              onChange={(val) => {
+                setBall(val as BallHolder)
                 if (fieldErrors.ball) setFieldErrors((prev) => ({ ...prev, ball: '' }))
               }}
-              className="w-full p-2 border border-[#cbd5d1] rounded-md bg-white outline-none font-medium"
-            >
-              <option value="Case Manager">Case Manager (Staff working)</option>
-              <option value="Client">Client (Awaiting documents/info)</option>
-              <option value="RCIC">RCIC (Awaiting review approval)</option>
-              <option value="Government">Government (Under IRCC/CBSA processing)</option>
-              <option value="Reception">Reception</option>
-              <option value="Third Party">Third Party</option>
-            </select>
+              triggerClassName="w-full border-[#cbd5d1] bg-white font-medium text-[#202d2d]"
+            />
           </div>
 
           <div>

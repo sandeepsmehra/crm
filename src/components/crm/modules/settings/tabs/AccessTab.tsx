@@ -1,4 +1,5 @@
 import React from 'react'
+import { CustomSelect } from '@/components/ui/custom/custom-select'
 
 export interface UserAccessItem {
   email: string
@@ -62,16 +63,12 @@ export function AccessTab({
             <label className="block text-sm font-semibold text-[#111827] mb-1.5">
               Role
             </label>
-            <select
+            <CustomSelect
               value={staffRole}
-              onChange={(e) => onStaffRoleChange(e.target.value as any)}
-              className="w-full bg-[#ebf3fc] border border-[#d2e3f8] text-[#1c385c] rounded-lg px-3.5 py-2.5 text-sm font-medium outline-none cursor-pointer"
-            >
-              <option value="case_manager">case_manager</option>
-              <option value="reception">reception</option>
-              <option value="viewer">viewer</option>
-              <option value="owner">owner</option>
-            </select>
+              options={["case_manager", "reception", "viewer", "owner"]}
+              onChange={(val) => onStaffRoleChange(val as any)}
+              triggerClassName="w-full bg-[#ebf3fc] border-[#d2e3f8] text-[#1c385c] rounded-lg px-3.5 py-2 text-sm font-medium"
+            />
           </div>
 
           <div className="pt-1">

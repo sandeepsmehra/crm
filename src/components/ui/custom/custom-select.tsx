@@ -38,6 +38,7 @@ export interface CustomSelectProps<T = any> {
   triggerClassName?: string;
   contentClassName?: string;
   invalid?: boolean;
+  valueOnly?: boolean;
 }
 
 export function CustomSelect<T = any>({
@@ -52,7 +53,7 @@ export function CustomSelect<T = any>({
   getOptionLabel = (opt: any) => opt?.label ?? opt?.name ?? opt?.typeName ?? String(opt),
   placeholder = "Select an option...",
   isMulti = false,
-  isClearable = true,
+  isClearable = false,
   isDisabled = false,
   isOptionDisabled,
   isLoading = false,
@@ -61,6 +62,7 @@ export function CustomSelect<T = any>({
   triggerClassName,
   contentClassName,
   invalid = false,
+  valueOnly = true,
 }: CustomSelectProps<T>) {
   const [open, setOpen] = React.useState(false);
   const [searchQuery, setSearchQuery] = React.useState("");
@@ -134,14 +136,21 @@ export function CustomSelect<T = any>({
         onChange([...currentArray, option]);
       }
     } else {
-      onChange(option);
+      if (valueOnly) {
+        const val = typeof option === "object" && option !== null && "value" in (option as any)
+          ? (option as any).value
+          : resolveValue(option);
+        onChange(val);
+      } else {
+        onChange(option);
+      }
       setOpen(false);
     }
   };
 
   const handleClear = (e: React.MouseEvent) => {
     e.stopPropagation();
-    onChange(isMulti ? [] : null);
+    onChange(isMulti ? [] : (valueOnly ? "" : null));
   };
 
   const handleRemoveBadge = (e: React.MouseEvent, option: T) => {

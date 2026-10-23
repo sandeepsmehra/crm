@@ -5,6 +5,7 @@ import { toast } from '@/components/ui/sonner'
 import { STAFF_MEMBERS, TODAY } from '@/data/mockData'
 import { addDays } from '@/lib/crmUtils'
 import { X, AlertCircle } from 'lucide-react'
+import { CustomSelect } from '@/components/ui/custom/custom-select'
 
 interface PflModalProps {
   isOpen: boolean
@@ -140,24 +141,22 @@ export function PflModal({
         <form noValidate onSubmit={handleSubmit} className="p-5 space-y-4 overflow-y-auto flex-1 text-[13.5px]">
           <div>
             <label className="block font-semibold text-[#202d2d] mb-1">Related Application Matter</label>
-            <select
+            <CustomSelect
               value={selectedMatterId}
-              onChange={(e) => {
-                setSelectedMatterId(e.target.value)
-                const m = matters.find((x) => x.id === e.target.value)
+              options={matters.map((m) => ({
+                value: m.id,
+                label: `${m.name} · ${m.type} (${m.id})`
+              }))}
+              onChange={(val) => {
+                setSelectedMatterId(val)
+                const m = matters.find((x) => x.id === val)
                 if (m) {
                   setOwner(m.owner)
                   setFileNumber(m.fileNumber || m.id)
                 }
               }}
-              className="w-full p-2 border border-[#cbd5d1] rounded-md bg-white outline-none focus:border-[#246b54]"
-            >
-              {matters.map((m) => (
-                <option key={m.id} value={m.id}>
-                  {m.name} · {m.type} ({m.id})
-                </option>
-              ))}
-            </select>
+              triggerClassName="w-full border-[#cbd5d1] bg-white text-[#202d2d]"
+            />
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -185,17 +184,18 @@ export function PflModal({
             </div>
             <div>
               <label className="block font-semibold text-[#202d2d] mb-1">Request Category</label>
-              <select
+              <CustomSelect
                 value={category}
-                onChange={(e) => setCategory(e.target.value)}
-                className="w-full p-2 border border-[#cbd5d1] rounded-md bg-white outline-none focus:border-[#246b54]"
-              >
-                <option value="Procedural Fairness Letter">Procedural Fairness Letter (PFL)</option>
-                <option value="Document Request Letter">IRCC Document Request Letter</option>
-                <option value="Medical Request">Medical Request / Additional Medical</option>
-                <option value="Interview Notice">Interview Notice</option>
-                <option value="Biometrics Request">Biometrics Request</option>
-              </select>
+                options={[
+                  { value: 'Procedural Fairness Letter', label: 'Procedural Fairness Letter (PFL)' },
+                  { value: 'Document Request Letter', label: 'IRCC Document Request Letter' },
+                  { value: 'Medical Request', label: 'Medical Request / Additional Medical' },
+                  { value: 'Interview Notice', label: 'Interview Notice' },
+                  { value: 'Biometrics Request', label: 'Biometrics Request' }
+                ]}
+                onChange={(val) => setCategory(val)}
+                triggerClassName="w-full border-[#cbd5d1] bg-white text-[#202d2d]"
+              />
             </div>
           </div>
 
@@ -267,15 +267,12 @@ export function PflModal({
             </div>
             <div>
               <label className="block font-semibold text-[#202d2d] mb-1">Assigned Staff</label>
-              <select
+              <CustomSelect
                 value={owner}
-                onChange={(e) => setOwner(e.target.value)}
-                className="w-full p-2 border border-[#cbd5d1] rounded-md bg-white outline-none focus:border-[#246b54]"
-              >
-                {STAFF_MEMBERS.map((s) => (
-                  <option key={s} value={s}>{s}</option>
-                ))}
-              </select>
+                options={STAFF_MEMBERS}
+                onChange={(val) => setOwner(val)}
+                triggerClassName="w-full border-[#cbd5d1] bg-white text-[#202d2d]"
+              />
             </div>
           </div>
 

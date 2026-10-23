@@ -4,6 +4,7 @@ import { TODAY, STAFF_MEMBERS } from '@/data/mockData'
 import { submissionZodSchema, submissionYupSchema } from './todoList.validation'
 import { toast } from '@/components/ui/sonner'
 import { X, Send, AlertCircle } from 'lucide-react'
+import { CustomSelect } from '@/components/ui/custom/custom-select'
 
 interface RecordSubmissionModalProps {
   isOpen: boolean
@@ -120,18 +121,19 @@ export function RecordSubmissionModal({
 
           <div>
             <label className="block font-semibold text-[#202d2d] mb-1">Portal / Authority</label>
-            <select
+            <CustomSelect
               value={portal}
-              onChange={(e) => setPortal(e.target.value)}
-              className="w-full p-2 border border-[#cbd5d1] rounded-md bg-white outline-none focus:border-[#246b54]"
-            >
-              <option value="IRCC Permanent Residence Portal">IRCC Permanent Residence Portal</option>
-              <option value="Authorized Paid Representative Portal">Authorized Paid Representative Portal</option>
-              <option value="Employer LMIA Online Portal">Employer LMIA Online Portal</option>
-              <option value="IRB Refugee Appeal Division Portal">IRB Refugee Appeal Division Portal</option>
-              <option value="Federal Court Registry (e-filing)">Federal Court Registry (e-filing)</option>
-              <option value="Paper Courier Package Delivery">Paper Courier Package Delivery</option>
-            </select>
+              options={[
+                "IRCC Permanent Residence Portal",
+                "Authorized Paid Representative Portal",
+                "Employer LMIA Online Portal",
+                "IRB Refugee Appeal Division Portal",
+                "Federal Court Registry (e-filing)",
+                "Paper Courier Package Delivery"
+              ]}
+              onChange={(val) => setPortal(val)}
+              triggerClassName="w-full border-[#cbd5d1] bg-white text-[#202d2d]"
+            />
           </div>
 
           <div>
@@ -159,17 +161,12 @@ export function RecordSubmissionModal({
 
           <div>
             <label className="block font-semibold text-[#202d2d] mb-1">Submitted By (Case Manager)</label>
-            <select
+            <CustomSelect
               value={by}
-              onChange={(e) => setBy(e.target.value)}
-              className="w-full p-2 border border-[#cbd5d1] rounded-md bg-white outline-none focus:border-[#246b54]"
-            >
-              {STAFF_MEMBERS.map((s) => (
-                <option key={s} value={s}>
-                  {s}
-                </option>
-              ))}
-            </select>
+              options={STAFF_MEMBERS}
+              onChange={(val) => setBy(val)}
+              triggerClassName="w-full border-[#cbd5d1] bg-white text-[#202d2d]"
+            />
           </div>
 
           <div>

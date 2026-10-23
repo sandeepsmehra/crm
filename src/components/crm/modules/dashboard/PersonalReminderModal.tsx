@@ -4,6 +4,7 @@ import { personalReminderZodSchema, personalReminderYupSchema } from './dashboar
 import { toast } from '@/components/ui/sonner'
 import { STAFF_MEMBERS, TODAY } from '@/data/mockData'
 import { X, AlertCircle } from 'lucide-react'
+import { CustomSelect } from '@/components/ui/custom/custom-select'
 
 interface PersonalReminderModalProps {
   isOpen: boolean
@@ -139,27 +140,21 @@ export function PersonalReminderModal({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="block font-semibold text-[#202d2d] mb-1">Case Manager</label>
-              <select
+              <CustomSelect
                 value={person}
-                onChange={(e) => setPerson(e.target.value)}
-                className="w-full p-2 border border-[#cbd5d1] rounded-md bg-white outline-none focus:border-[#246b54]"
-              >
-                {STAFF_MEMBERS.map((s) => (
-                  <option key={s} value={s}>{s}</option>
-                ))}
-              </select>
+                options={STAFF_MEMBERS}
+                onChange={(val) => setPerson(val)}
+                triggerClassName="w-full border-[#cbd5d1] bg-white text-[#202d2d]"
+              />
             </div>
             <div>
               <label className="block font-semibold text-[#202d2d] mb-1">Priority</label>
-              <select
+              <CustomSelect
                 value={priority}
-                onChange={(e) => setPriority(e.target.value as any)}
-                className="w-full p-2 border border-[#cbd5d1] rounded-md bg-white outline-none focus:border-[#246b54]"
-              >
-                <option value="Normal">Normal</option>
-                <option value="High">High</option>
-                <option value="Urgent">Urgent</option>
-              </select>
+                options={["Normal", "High", "Urgent"]}
+                onChange={(val) => setPriority(val as any)}
+                triggerClassName="w-full border-[#cbd5d1] bg-white text-[#202d2d]"
+              />
             </div>
           </div>
 
@@ -198,18 +193,20 @@ export function PersonalReminderModal({
 
           <div>
             <label className="block font-semibold text-[#202d2d] mb-1">Related Application (Optional)</label>
-            <select
+            <CustomSelect
               value={applicationId}
-              onChange={(e) => setApplicationId(e.target.value)}
-              className="w-full p-2 border border-[#cbd5d1] rounded-md bg-white outline-none focus:border-[#246b54]"
-            >
-              <option value="">None / General</option>
-              {matters.map((m) => (
-                <option key={m.id} value={m.id}>
-                  {m.name} · {m.type} ({m.id})
-                </option>
-              ))}
-            </select>
+              placeholder="None / General"
+              isClearable
+              options={[
+                { value: "", label: "None / General" },
+                ...matters.map((m) => ({
+                  value: m.id,
+                  label: `${m.name} · ${m.type} (${m.id})`
+                }))
+              ]}
+              onChange={(val) => setApplicationId(val)}
+              triggerClassName="w-full border-[#cbd5d1] bg-white text-[#202d2d]"
+            />
           </div>
 
           <div>

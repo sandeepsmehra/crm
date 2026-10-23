@@ -1,5 +1,6 @@
 import React from 'react'
 import { PersonalReminder } from '@/types/crm'
+import { CustomSelect } from '@/components/ui/custom/custom-select'
 
 interface PersonalRemindersTabProps {
   personalReminders: PersonalReminder[]
@@ -96,18 +97,21 @@ export function PersonalRemindersTab({
 
       {/* Case Manager Dropdown Filter */}
       <div className="flex items-center gap-2 pt-1">
-        <span className="text-xs text-[#1c2826] font-medium">Case manager</span>
-        <select
-          value={reminderManagerFilter}
-          onChange={(e) => onManagerFilterChange(e.target.value)}
-          className="bg-[#ebf3fc] border border-[#d2e3f8] text-[#1c385c] rounded-md px-3 py-1.5 text-xs font-medium outline-none cursor-pointer"
-        >
-          <option value="All">All case managers</option>
-          <option value="Amanpreet">Amanpreet</option>
-          <option value="Inderpreet">Inderpreet</option>
-          <option value="Sukhman">Sukhman</option>
-          <option value="Tejinder">Tejinder</option>
-        </select>
+        <span className="text-xs text-[#1c2826] font-medium shrink-0">Case manager</span>
+        <div className="w-48">
+          <CustomSelect
+            value={reminderManagerFilter}
+            options={[
+              { value: "All", label: "All case managers" },
+              { value: "Amanpreet", label: "Amanpreet" },
+              { value: "Inderpreet", label: "Inderpreet" },
+              { value: "Sukhman", label: "Sukhman" },
+              { value: "Tejinder", label: "Tejinder" }
+            ]}
+            onChange={(val) => onManagerFilterChange(val)}
+            triggerClassName="bg-[#ebf3fc] border-[#d2e3f8] text-[#1c385c] rounded-md px-3 py-1 text-xs font-medium h-8"
+          />
+        </div>
       </div>
 
       <p className="text-xs text-[#6b7280]">

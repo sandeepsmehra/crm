@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { APPLICATION_TYPES } from '@/data/mockData'
 import { ChevronRight, ChevronDown } from 'lucide-react'
+import { CustomSelect } from '@/components/ui/custom/custom-select'
 
 interface TemplatesTabProps {
   selectedTemplate: string
@@ -29,17 +30,12 @@ export function TemplatesTab({
         <label className="block text-sm font-semibold text-[#111827] mb-1.5">
           Service template
         </label>
-        <select
+        <CustomSelect
           value={selectedTemplate}
-          onChange={(e) => onSelectedTemplateChange(e.target.value)}
-          className="w-full bg-[#ebf3fc] border border-[#d2e3f8] text-[#1c385c] rounded-lg px-3.5 py-2.5 text-sm font-medium outline-none cursor-pointer"
-        >
-          {APPLICATION_TYPES.map((t) => (
-            <option key={t} value={t}>
-              {t}
-            </option>
-          ))}
-        </select>
+          options={APPLICATION_TYPES}
+          onChange={(val) => onSelectedTemplateChange(val)}
+          triggerClassName="w-full bg-[#ebf3fc] border-[#d2e3f8] text-[#1c385c] rounded-lg px-3.5 py-2 text-sm font-medium"
+        />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 max-w-5xl">

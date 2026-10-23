@@ -3,6 +3,7 @@ import { ContactLogEntry } from '@/types/crm'
 import { TODAY, STAFF_MEMBERS } from '@/data/mockData'
 import { X, AlertCircle } from 'lucide-react'
 import { toast } from '@/components/ui/sonner'
+import { CustomSelect } from '@/components/ui/custom/custom-select'
 import { contactLogZodSchema } from './matter.validation'
 
 interface RecordContactModalProps {
@@ -134,32 +135,21 @@ export function RecordContactModal({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="block font-semibold text-[#202d2d] mb-1">Contact Method</label>
-              <select
+              <CustomSelect
                 value={method}
-                onChange={(e) => setMethod(e.target.value as any)}
-                className="w-full p-2 border border-[#cbd5d1] rounded-md bg-white outline-none"
-              >
-                <option value="Phone call">Phone call</option>
-                <option value="Email">Email</option>
-                <option value="WhatsApp">WhatsApp</option>
-                <option value="In person">In person</option>
-                <option value="Internal note">Internal note</option>
-                <option value="Other">Other</option>
-              </select>
+                options={["Phone call", "Email", "WhatsApp", "In person", "Internal note", "Other"]}
+                onChange={(val) => setMethod(val as any)}
+                triggerClassName="w-full border-[#cbd5d1] bg-white text-[#202d2d]"
+              />
             </div>
             <div>
               <label className="block font-semibold text-[#202d2d] mb-1">Recorded By</label>
-              <select
+              <CustomSelect
                 value={staff}
-                onChange={(e) => setStaff(e.target.value)}
-                className="w-full p-2 border border-[#cbd5d1] rounded-md bg-white outline-none"
-              >
-                {['Tejinder', 'Reception', ...STAFF_MEMBERS].map((s) => (
-                  <option key={s} value={s}>
-                    {s}
-                  </option>
-                ))}
-              </select>
+                options={['Tejinder', 'Reception', ...STAFF_MEMBERS.filter(s => s !== 'Tejinder')]}
+                onChange={(val) => setStaff(val)}
+                triggerClassName="w-full border-[#cbd5d1] bg-white text-[#202d2d]"
+              />
             </div>
           </div>
 

@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { Matter, Client } from '@/types/crm'
 import { toast } from '@/components/ui/sonner'
+import { CustomSelect } from '@/components/ui/custom/custom-select'
 
 interface RetainersInvoicesViewProps {
   matters: Matter[]
@@ -151,26 +152,28 @@ export function RetainersInvoicesView({
                   <td className="py-4 px-4 text-[#1c2826]">{row.dateRetained}</td>
                   <td className="py-4 px-4 text-[#1c2826]">{row.assignedTo}</td>
                   <td className="py-4 px-4">
-                    <select
-                      defaultValue={row.retainer}
-                      className="bg-[#ebf3fc] border border-[#d2e3f8] text-[#1c385c] rounded-md px-2.5 py-1 text-xs font-medium outline-none cursor-pointer"
-                    >
-                      <option value="Not prepared">Not prepared ▾</option>
-                      <option value="Prepared">Prepared ▾</option>
-                      <option value="Sent">Sent ▾</option>
-                      <option value="Signed">Signed ▾</option>
-                    </select>
+                    <div className="w-36">
+                      <CustomSelect
+                        value={row.retainer}
+                        options={["Not prepared", "Prepared", "Sent", "Signed"]}
+                        onChange={(val) => {
+                          toast.success(`Updated retainer status to ${val}`)
+                        }}
+                        triggerClassName="bg-[#ebf3fc] border-[#d2e3f8] text-[#1c385c] rounded-md px-2.5 py-1 text-xs font-medium h-7"
+                      />
+                    </div>
                   </td>
                   <td className="py-4 px-4">
-                    <select
-                      defaultValue={row.invoice}
-                      className="bg-[#ebf3fc] border border-[#d2e3f8] text-[#1c385c] rounded-md px-2.5 py-1 text-xs font-medium outline-none cursor-pointer"
-                    >
-                      <option value="Not prepared">Not prepared ▾</option>
-                      <option value="Prepared">Prepared ▾</option>
-                      <option value="Sent">Sent ▾</option>
-                      <option value="Paid">Paid ▾</option>
-                    </select>
+                    <div className="w-36">
+                      <CustomSelect
+                        value={row.invoice}
+                        options={["Not prepared", "Prepared", "Sent", "Paid"]}
+                        onChange={(val) => {
+                          toast.success(`Updated invoice status to ${val}`)
+                        }}
+                        triggerClassName="bg-[#ebf3fc] border-[#d2e3f8] text-[#1c385c] rounded-md px-2.5 py-1 text-xs font-medium h-7"
+                      />
+                    </div>
                   </td>
                   <td className="py-4 px-4">
                     <button

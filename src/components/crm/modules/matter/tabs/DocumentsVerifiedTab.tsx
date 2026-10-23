@@ -1,5 +1,6 @@
 import React from 'react'
 import { STAFF_MEMBERS } from '@/data/mockData'
+import { CustomSelect } from '@/components/ui/custom/custom-select'
 
 export interface DocRow {
   id: string
@@ -59,17 +60,14 @@ export function DocumentsVerifiedTab({
               <tr key={doc.id} className="hover:bg-[#fbfcfb]">
                 {/* Document Dropdown */}
                 <td className="py-3 px-3 align-top">
-                  <select
-                    value={doc.name}
-                    onChange={(e) => onUpdateDoc(doc.id, 'name', e.target.value)}
-                    className="bg-[#ebf3fc] border border-[#d2e3f8] text-[#1c385c] rounded-md px-2.5 py-1.5 text-xs font-medium outline-none cursor-pointer w-44"
-                  >
-                    <option value="PCC">PCC</option>
-                    <option value="IELTS">IELTS</option>
-                    <option value="Experience Letters">Experience Letters</option>
-                    <option value="Passport">Passport</option>
-                    <option value="Marriage certificate">Marriage certificate</option>
-                  </select>
+                  <div className="w-48">
+                    <CustomSelect
+                      value={doc.name}
+                      options={["PCC", "IELTS", "Experience Letters", "Passport", "Marriage certificate"]}
+                      onChange={(val) => onUpdateDoc(doc.id, 'name', val)}
+                      triggerClassName="bg-[#ebf3fc] border-[#d2e3f8] text-[#1c385c] rounded-md px-2.5 py-1 text-xs font-medium h-8"
+                    />
+                  </div>
                   <div className="text-[11px] text-[#6b7280] mt-1">{clientName}</div>
                 </td>
 
@@ -102,31 +100,28 @@ export function DocumentsVerifiedTab({
 
                 {/* Status Dropdown */}
                 <td className="py-3 px-3 align-top">
-                  <select
-                    value={doc.status}
-                    onChange={(e) => onUpdateDoc(doc.id, 'status', e.target.value)}
-                    className="bg-[#ebf3fc] border border-[#d2e3f8] text-[#1c385c] rounded-md px-2.5 py-1.5 text-xs font-medium outline-none cursor-pointer"
-                  >
-                    <option value="Not received">Not received</option>
-                    <option value="Received">Received</option>
-                    <option value="Verified">Verified</option>
-                  </select>
+                  <div className="w-36">
+                    <CustomSelect
+                      value={doc.status}
+                      options={["Not received", "Received", "Verified"]}
+                      onChange={(val) => onUpdateDoc(doc.id, 'status', val)}
+                      triggerClassName="bg-[#ebf3fc] border-[#d2e3f8] text-[#1c385c] rounded-md px-2.5 py-1 text-xs font-medium h-8"
+                    />
+                  </div>
                 </td>
 
                 {/* Verified By Dropdown */}
                 <td className="py-3 px-3 align-top">
-                  <select
-                    value={doc.verifiedBy}
-                    onChange={(e) => onUpdateDoc(doc.id, 'verifiedBy', e.target.value)}
-                    className="bg-[#ebf3fc] border border-[#d2e3f8] text-[#1c385c] rounded-md px-2.5 py-1.5 text-xs font-medium outline-none cursor-pointer"
-                  >
-                    <option value="">Select manager</option>
-                    {STAFF_MEMBERS.map((s) => (
-                      <option key={s} value={s}>
-                        {s}
-                      </option>
-                    ))}
-                  </select>
+                  <div className="w-40">
+                    <CustomSelect
+                      value={doc.verifiedBy}
+                      options={STAFF_MEMBERS}
+                      placeholder="Select manager"
+                      isClearable
+                      onChange={(val) => onUpdateDoc(doc.id, 'verifiedBy', val)}
+                      triggerClassName="bg-[#ebf3fc] border-[#d2e3f8] text-[#1c385c] rounded-md px-2.5 py-1 text-xs font-medium h-8"
+                    />
+                  </div>
                 </td>
 
                 {/* Notes */}

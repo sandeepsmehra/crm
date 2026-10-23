@@ -3,6 +3,7 @@ import { OfficeTask } from '@/types/crm'
 import { STAFF_MEMBERS } from '@/data/mockData'
 import { toast } from '@/components/ui/sonner'
 import { X, CheckCircle2 } from 'lucide-react'
+import { CustomSelect } from '@/components/ui/custom/custom-select'
 
 interface CompleteTaskModalProps {
   isOpen: boolean
@@ -94,17 +95,12 @@ export function CompleteTaskModal({
 
           <div>
             <label className="block font-semibold text-[#202d2d] mb-1">Completed By</label>
-            <select
+            <CustomSelect
               value={completedBy}
-              onChange={(e) => setCompletedBy(e.target.value)}
-              className="w-full p-2 border border-[#cbd5d1] rounded-md bg-white outline-none focus:border-[#246b54]"
-            >
-              {['Reception', 'Tejinder', ...STAFF_MEMBERS].map((s) => (
-                <option key={s} value={s}>
-                  {s}
-                </option>
-              ))}
-            </select>
+              options={['Reception', 'Tejinder', ...STAFF_MEMBERS.filter(s => s !== 'Tejinder')]}
+              onChange={(val) => setCompletedBy(val)}
+              triggerClassName="w-full border-[#cbd5d1] bg-white text-[#202d2d]"
+            />
           </div>
 
           <div className="pt-3 border-t border-[#edf0ee] flex items-center justify-end gap-2.5">

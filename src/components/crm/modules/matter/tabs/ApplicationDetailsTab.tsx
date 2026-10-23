@@ -1,5 +1,6 @@
 import React from 'react'
 import { APPLICATION_TYPES, STAFF_MEMBERS } from '@/data/mockData'
+import { CustomSelect } from '@/components/ui/custom/custom-select'
 
 interface ApplicationDetailsTabProps {
   appType: string
@@ -53,17 +54,12 @@ export function ApplicationDetailsTab({
             <label className="block text-sm font-semibold text-[#111827] mb-1.5">
               Application Type
             </label>
-            <select
+            <CustomSelect
               value={appType}
-              onChange={(e) => onAppTypeChange(e.target.value)}
-              className="w-full bg-[#ebf3fc] border border-[#d2e3f8] text-[#1c385c] rounded-lg px-3.5 py-2.5 text-sm font-medium outline-none cursor-pointer"
-            >
-              {APPLICATION_TYPES.map((t) => (
-                <option key={t} value={t}>
-                  {t}
-                </option>
-              ))}
-            </select>
+              options={APPLICATION_TYPES}
+              onChange={(val) => onAppTypeChange(val)}
+              triggerClassName="w-full bg-[#ebf3fc] border-[#d2e3f8] text-[#1c385c] rounded-lg px-3.5 py-2 text-sm font-medium"
+            />
           </div>
 
           <div>
@@ -84,18 +80,14 @@ export function ApplicationDetailsTab({
           <label className="block text-sm font-semibold text-[#111827] mb-1.5">
             Case Manager
           </label>
-          <select
-            value={caseManager}
-            onChange={(e) => onCaseManagerChange(e.target.value)}
-            className="w-full bg-[#ebf3fc] border border-[#d2e3f8] text-[#1c385c] rounded-lg px-3.5 py-2.5 text-sm font-medium outline-none cursor-pointer max-w-md"
-          >
-            <option value="Unassigned">Unassigned</option>
-            {STAFF_MEMBERS.map((s) => (
-              <option key={s} value={s}>
-                {s}
-              </option>
-            ))}
-          </select>
+          <div className="max-w-md">
+            <CustomSelect
+              value={caseManager}
+              options={["Unassigned", ...STAFF_MEMBERS]}
+              onChange={(val) => onCaseManagerChange(val)}
+              triggerClassName="w-full bg-[#ebf3fc] border-[#d2e3f8] text-[#1c385c] rounded-lg px-3.5 py-2 text-sm font-medium"
+            />
+          </div>
         </div>
 
         <div>
@@ -131,14 +123,12 @@ export function ApplicationDetailsTab({
           <label className="block text-sm font-semibold text-[#111827] mb-1.5">
             Any dependants?
           </label>
-          <select
+          <CustomSelect
             value={hasDependants}
-            onChange={(e) => onHasDependantsChange(e.target.value)}
-            className="w-full bg-[#ebf3fc] border border-[#d2e3f8] text-[#1c385c] rounded-lg px-3.5 py-2.5 text-sm font-medium outline-none cursor-pointer"
-          >
-            <option value="No">No</option>
-            <option value="Yes">Yes</option>
-          </select>
+            options={["No", "Yes"]}
+            onChange={(val) => onHasDependantsChange(val)}
+            triggerClassName="w-full bg-[#ebf3fc] border-[#d2e3f8] text-[#1c385c] rounded-lg px-3.5 py-2 text-sm font-medium"
+          />
         </div>
       </div>
 

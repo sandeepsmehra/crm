@@ -5,6 +5,7 @@ import { normalizePhone } from '@/lib/crmUtils'
 import { clientZodSchema, clientYupSchema } from './clients.validation'
 import { toast } from '@/components/ui/sonner'
 import { X, AlertCircle } from 'lucide-react'
+import { CustomSelect } from '@/components/ui/custom/custom-select'
 
 interface NewClientModalProps {
   isOpen: boolean
@@ -247,15 +248,12 @@ export function NewClientModal({
 
           <div>
             <label className="block font-semibold text-[#202d2d] mb-1">Application Type / Service</label>
-            <select
+            <CustomSelect
               value={type}
-              onChange={(e) => setType(e.target.value)}
-              className="w-full p-2 border border-[#cbd5d1] rounded-md bg-white outline-none focus:border-[#246b54]"
-            >
-              {APPLICATION_TYPES.map((t) => (
-                <option key={t} value={t}>{t}</option>
-              ))}
-            </select>
+              options={APPLICATION_TYPES}
+              onChange={(val) => setType(val)}
+              triggerClassName="w-full border-[#cbd5d1] bg-white text-[#202d2d]"
+            />
           </div>
 
           <div className="p-3 bg-[#fff8eb] border border-[#f5dfa8] rounded-md">

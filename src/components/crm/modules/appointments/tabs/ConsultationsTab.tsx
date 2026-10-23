@@ -1,5 +1,6 @@
 import React from 'react'
 import { Appointment } from '@/types/crm'
+import { CustomSelect } from '@/components/ui/custom/custom-select'
 
 interface ConsultationsTabProps {
   appointments: Appointment[]
@@ -50,19 +51,16 @@ export function ConsultationsTab({
                     <td className="py-3.5 px-4 text-[#1c2826]">{appt.service}</td>
                     <td className="py-3.5 px-4 text-[#1c2826]">{appt.notes || '—'}</td>
                     <td className="py-3.5 px-4" onClick={(e) => e.stopPropagation()}>
-                      <select
-                        value={appt.status || 'Confirmed'}
-                        onChange={(e) => {
-                          onUpdateCell(appt.id, 'status', e.target.value as any)
-                        }}
-                        className="bg-[#e6f4ea] text-[#137333] border border-[#b7e1cd] rounded-md px-2.5 py-1 text-xs font-medium outline-none cursor-pointer"
-                      >
-                        <option value="Confirmed">Confirmed ▾</option>
-                        <option value="Scheduled">Scheduled</option>
-                        <option value="Waiting">Waiting</option>
-                        <option value="Completed">Completed</option>
-                        <option value="Cancelled">Cancelled</option>
-                      </select>
+                      <div className="w-32">
+                        <CustomSelect
+                          value={appt.status || 'Confirmed'}
+                          options={["Confirmed", "Scheduled", "Waiting", "Completed", "Cancelled"]}
+                          onChange={(val) => {
+                            onUpdateCell(appt.id, 'status', val as any)
+                          }}
+                          triggerClassName="bg-[#e6f4ea] text-[#137333] border-[#b7e1cd] rounded-md px-2 py-1 text-xs font-medium h-7"
+                        />
+                      </div>
                     </td>
                     <td className="py-3.5 px-4 text-[#1a56db] font-medium">Existing Client</td>
                     <td className="py-3.5 px-4 text-[#6b7280]">{appt.source || '—'}</td>

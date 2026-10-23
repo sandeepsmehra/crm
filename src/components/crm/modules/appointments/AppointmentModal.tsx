@@ -4,6 +4,7 @@ import { APPLICATION_TYPES, CONSULTANTS, TODAY } from '@/data/mockData'
 import { appointmentZodSchema, appointmentYupSchema } from './appointments.validation'
 import { toast } from '@/components/ui/sonner'
 import { X, AlertCircle } from 'lucide-react'
+import { CustomSelect } from '@/components/ui/custom/custom-select'
 
 interface AppointmentModalProps {
   isOpen: boolean
@@ -245,32 +246,31 @@ export function AppointmentModal({
           {/* Client Selection */}
           <div>
             <label className="block font-semibold text-[#202d2d] mb-1">Client Profile</label>
-            <select
+            <CustomSelect
               value={isNewClient ? 'NEW' : clientId}
-              onChange={(e) => {
-                if (e.target.value === 'NEW') {
+              options={[
+                { value: 'NEW', label: '+ Add a new client profile' },
+                ...clients.map((c) => ({
+                  value: c.id,
+                  label: `${c.name} · ${c.phone}`
+                }))
+              ]}
+              onChange={(val) => {
+                if (val === 'NEW') {
                   setIsNewClient(true)
                 } else {
                   setIsNewClient(false)
-                  setClientId(e.target.value)
+                  setClientId(val)
                   if (fieldErrors.client) setFieldErrors((p) => ({ ...p, client: '' }))
                 }
               }}
-              className={`w-full p-2 border rounded-md bg-white outline-none transition-colors ${
+              invalid={!!fieldErrors.client && !isNewClient}
+              triggerClassName={`w-full bg-white ${
                 fieldErrors.client && !isNewClient
                   ? 'border-red-500 bg-red-50/20 focus:border-red-500'
                   : 'border-[#cbd5d1]'
               }`}
-            >
-              <optgroup label="Existing Clients">
-                {clients.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name} · {c.phone}
-                  </option>
-                ))}
-              </optgroup>
-              <option value="NEW">+ Add a new client profile</option>
-            </select>
+            />
             {fieldErrors.client && !isNewClient && (
               <p className="text-[12px] text-red-600 mt-1 font-medium flex items-center gap-1">
                 <span>•</span> {fieldErrors.client}
@@ -342,31 +342,24 @@ export function AppointmentModal({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="block font-semibold text-[#202d2d] mb-1">Service Requested</label>
-              <select
+              <CustomSelect
                 value={service}
-                onChange={(e) => setService(e.target.value)}
-                className="w-full p-2 border border-[#cbd5d1] rounded-md bg-white outline-none"
-              >
-                {APPLICATION_TYPES.map((t) => (
-                  <option key={t} value={t}>
-                    {t}
-                  </option>
-                ))}
-              </select>
+                options={APPLICATION_TYPES}
+                onChange={(val) => setService(val)}
+                triggerClassName="w-full border-[#cbd5d1] bg-white text-[#202d2d]"
+              />
             </div>
             <div>
               <label className="block font-semibold text-[#202d2d] mb-1">Consultant</label>
-              <select
+              <CustomSelect
                 value={consultant}
-                onChange={(e) => setConsultant(e.target.value)}
-                className="w-full p-2 border border-[#cbd5d1] rounded-md bg-white outline-none"
-              >
-                {CONSULTANTS.map((c) => (
-                  <option key={c} value={c}>
-                    {c} (RCIC-IRB)
-                  </option>
-                ))}
-              </select>
+                options={CONSULTANTS.map((c) => ({
+                  value: c,
+                  label: `${c} (RCIC-IRB)`
+                }))}
+                onChange={(val) => setConsultant(val)}
+                triggerClassName="w-full border-[#cbd5d1] bg-white text-[#202d2d]"
+              />
             </div>
           </div>
 
@@ -416,18 +409,19 @@ export function AppointmentModal({
             </div>
             <div>
               <label className="block font-semibold text-[#202d2d] mb-1">Duration</label>
-              <select
+              <CustomSelect
                 value={duration}
-                onChange={(e) => setDuration(Number(e.target.value))}
-                className="w-full p-2 border border-[#cbd5d1] rounded-md bg-white outline-none"
-              >
-                <option value={15}>15 mins</option>
-                <option value={30}>30 mins</option>
-                <option value={45}>45 mins</option>
-                <option value={60}>60 mins</option>
-                <option value={90}>90 mins</option>
-                <option value={120}>120 mins</option>
-              </select>
+                options={[
+                  { value: 15, label: "15 mins" },
+                  { value: 30, label: "30 mins" },
+                  { value: 45, label: "45 mins" },
+                  { value: 60, label: "60 mins" },
+                  { value: 90, label: "90 mins" },
+                  { value: 120, label: "120 mins" }
+                ]}
+                onChange={(val) => setDuration(Number(val))}
+                triggerClassName="w-full border-[#cbd5d1] bg-white text-[#202d2d]"
+              />
             </div>
           </div>
 
@@ -435,46 +429,33 @@ export function AppointmentModal({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="block font-semibold text-[#202d2d] mb-1">Meeting Mode</label>
-              <select
+              <CustomSelect
                 value={mode}
-                onChange={(e) => setMode(e.target.value)}
-                className="w-full p-2 border border-[#cbd5d1] rounded-md bg-white outline-none"
-              >
-                <option value="In person">In person</option>
-                <option value="Phone">Phone</option>
-                <option value="Video call">Video call</option>
-              </select>
+                options={["In person", "Phone", "Video call"]}
+                onChange={(val) => setMode(val)}
+                triggerClassName="w-full border-[#cbd5d1] bg-white text-[#202d2d]"
+              />
             </div>
             <div>
               <label className="block font-semibold text-[#202d2d] mb-1">Sheet Section</label>
-              <select
+              <CustomSelect
                 value={section}
-                onChange={(e) => setSection(e.target.value as any)}
-                className="w-full p-2 border border-[#cbd5d1] rounded-md bg-white outline-none"
-              >
-                <option value="Clients">Clients</option>
-                <option value="Staff">Staff</option>
-                <option value="Follow-ups">Follow-ups</option>
-              </select>
+                options={["Clients", "Staff", "Follow-ups"]}
+                onChange={(val) => setSection(val as any)}
+                triggerClassName="w-full border-[#cbd5d1] bg-white text-[#202d2d]"
+              />
             </div>
           </div>
 
           {/* Status */}
           <div>
             <label className="block font-semibold text-[#202d2d] mb-1">Status</label>
-            <select
+            <CustomSelect
               value={status}
-              onChange={(e) => setStatus(e.target.value as any)}
-              className="w-full p-2 border border-[#cbd5d1] rounded-md bg-white outline-none"
-            >
-              <option value="Scheduled">Scheduled</option>
-              <option value="Confirmed">Confirmed</option>
-              <option value="Waiting">Waiting</option>
-              <option value="In Consultation">In Consultation</option>
-              <option value="Completed">Completed</option>
-              <option value="Cancelled">Cancelled</option>
-              <option value="No-show">No-show</option>
-            </select>
+              options={["Scheduled", "Confirmed", "Waiting", "In Consultation", "Completed", "Cancelled", "No-show"]}
+              onChange={(val) => setStatus(val as any)}
+              triggerClassName="w-full border-[#cbd5d1] bg-white text-[#202d2d]"
+            />
           </div>
 
           {/* Notes */}

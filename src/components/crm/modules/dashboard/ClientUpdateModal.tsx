@@ -4,6 +4,7 @@ import { clientUpdateZodSchema, clientUpdateYupSchema } from './dashboard.valida
 import { toast } from '@/components/ui/sonner'
 import { STAFF_MEMBERS, TODAY } from '@/data/mockData'
 import { X, ChevronDown, AlertCircle } from 'lucide-react'
+import { CustomSelect } from '@/components/ui/custom/custom-select'
 
 interface ClientUpdateModalProps {
   isOpen: boolean
@@ -263,34 +264,33 @@ export function ClientUpdateModal({
               <label className="block text-[13px] font-semibold text-[#1c2826] mb-1.5">
                 Update type
               </label>
-              <div className="relative">
-                <select
-                  value={updateType}
-                  onChange={(e) => {
-                    setUpdateType(e.target.value)
-                    if (fieldErrors.updateType) {
-                      setFieldErrors((prev) => {
-                        const next = { ...prev }
-                        delete next.updateType
-                        return next
-                      })
-                    }
-                  }}
-                  className={`w-full appearance-none px-3 py-2 pr-9 bg-[#edf7f0] border rounded-md text-[13.5px] font-medium text-[#166534] outline-none focus:ring-1 focus:ring-[#166534] cursor-pointer ${
-                    fieldErrors.updateType ? 'border-red-500' : 'border-[#c3e6cb]'
-                  }`}
-                >
-                  <option value="Approved">Approved</option>
-                  <option value="Refused">Refused</option>
-                  <option value="Documents Requested">Documents Requested</option>
-                  <option value="Biometrics instruction letter">Biometrics instruction letter</option>
-                  <option value="Acknowledgement of receipt">Acknowledgement of receipt</option>
-                  <option value="Medical Request">Medical Request</option>
-                  <option value="Passport Request">Passport Request</option>
-                  <option value="Other">Other</option>
-                </select>
-                <ChevronDown className="w-4 h-4 text-[#166534] absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-              </div>
+              <CustomSelect
+                value={updateType}
+                options={[
+                  "Approved",
+                  "Refused",
+                  "Documents Requested",
+                  "Biometrics instruction letter",
+                  "Acknowledgement of receipt",
+                  "Medical Request",
+                  "Passport Request",
+                  "Other"
+                ]}
+                onChange={(val) => {
+                  setUpdateType(val)
+                  if (fieldErrors.updateType) {
+                    setFieldErrors((prev) => {
+                      const next = { ...prev }
+                      delete next.updateType
+                      return next
+                    })
+                  }
+                }}
+                invalid={!!fieldErrors.updateType}
+                triggerClassName={`w-full bg-[#edf7f0] border font-medium text-[#166534] ${
+                  fieldErrors.updateType ? 'border-red-500' : 'border-[#c3e6cb]'
+                }`}
+              />
               {fieldErrors.updateType && (
                 <p className="text-[12px] text-red-600 mt-1 font-medium flex items-center gap-1">
                   <span>•</span> {fieldErrors.updateType}
@@ -305,21 +305,13 @@ export function ClientUpdateModal({
               <label className="block text-[13px] font-semibold text-[#1c2826] mb-1.5">
                 Checked By
               </label>
-              <div className="relative">
-                <select
-                  value={checkedBy}
-                  onChange={(e) => setCheckedBy(e.target.value)}
-                  className="w-full appearance-none px-3 py-2 pr-9 bg-[#edf3fe] border border-[#d7e3fc] rounded-md text-[13.5px] text-[#374151] outline-none focus:ring-1 focus:ring-[#3b82f6] cursor-pointer"
-                >
-                  <option value="">Select case manager</option>
-                  {STAFF_MEMBERS.map((s) => (
-                    <option key={s} value={s}>
-                      {s}
-                    </option>
-                  ))}
-                </select>
-                <ChevronDown className="w-4 h-4 text-[#6b7280] absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-              </div>
+              <CustomSelect
+                value={checkedBy}
+                options={STAFF_MEMBERS}
+                onChange={(val) => setCheckedBy(val)}
+                placeholder="Select case manager"
+                triggerClassName="w-full bg-[#edf3fe] border-[#d7e3fc] text-[#374151]"
+              />
             </div>
           </div>
 
@@ -348,60 +340,39 @@ export function ClientUpdateModal({
               <label className="block text-[12.5px] font-semibold text-[#1c2826] mb-1.5">
                 Status
               </label>
-              <div className="relative">
-                <select
-                  value={status}
-                  onChange={(e) => setStatus(e.target.value as any)}
-                  className="w-full appearance-none px-3 py-2 pr-8 bg-[#edf3fe] border border-[#d7e3fc] rounded-md text-[13.5px] text-[#374151] outline-none focus:ring-1 focus:ring-[#3b82f6] cursor-pointer"
-                >
-                  <option value="Not Sent">Not Sent</option>
-                  <option value="Sent">Sent</option>
-                  <option value="Pending Further">Pending Further</option>
-                </select>
-                <ChevronDown className="w-4 h-4 text-[#6b7280] absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-              </div>
+              <CustomSelect
+                value={status}
+                options={["Not Sent", "Sent", "Pending Further"]}
+                onChange={(val) => setStatus(val as any)}
+                triggerClassName="w-full bg-[#edf3fe] border-[#d7e3fc] text-[#374151]"
+              />
             </div>
 
             <div>
               <label className="block text-[12.5px] font-semibold text-[#1c2826] mb-1.5">
                 Method
               </label>
-              <div className="relative">
-                <select
-                  value={method}
-                  onChange={(e) => setMethod(e.target.value)}
-                  className="w-full appearance-none px-3 py-2 pr-8 bg-[#edf3fe] border border-[#d7e3fc] rounded-md text-[13.5px] text-[#374151] outline-none focus:ring-1 focus:ring-[#3b82f6] cursor-pointer"
-                >
-                  <option value=""></option>
-                  <option value="Email">Email</option>
-                  <option value="Phone call / Text">Phone call / Text</option>
-                  <option value="In Person">In Person</option>
-                  <option value="Client Portal">Client Portal</option>
-                  <option value="WhatsApp">WhatsApp</option>
-                </select>
-                <ChevronDown className="w-4 h-4 text-[#6b7280] absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-              </div>
+              <CustomSelect
+                value={method}
+                options={["Email", "Phone call / Text", "In Person", "Client Portal", "WhatsApp"]}
+                onChange={(val) => setMethod(val)}
+                placeholder="Select method"
+                isClearable
+                triggerClassName="w-full bg-[#edf3fe] border-[#d7e3fc] text-[#374151]"
+              />
             </div>
 
             <div>
               <label className="block text-[12.5px] font-semibold text-[#1c2826] mb-1.5">
                 Sent by
               </label>
-              <div className="relative">
-                <select
-                  value={sentBy}
-                  onChange={(e) => setSentBy(e.target.value)}
-                  className="w-full appearance-none px-3 py-2 pr-8 bg-[#edf3fe] border border-[#d7e3fc] rounded-md text-[13.5px] text-[#374151] outline-none focus:ring-1 focus:ring-[#3b82f6] cursor-pointer"
-                >
-                  <option value="">Select case manager</option>
-                  {STAFF_MEMBERS.map((s) => (
-                    <option key={s} value={s}>
-                      {s}
-                    </option>
-                  ))}
-                </select>
-                <ChevronDown className="w-4 h-4 text-[#6b7280] absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-              </div>
+              <CustomSelect
+                value={sentBy}
+                options={STAFF_MEMBERS}
+                onChange={(val) => setSentBy(val)}
+                placeholder="Select case manager"
+                triggerClassName="w-full bg-[#edf3fe] border-[#d7e3fc] text-[#374151]"
+              />
             </div>
           </div>
 

@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 import { Client, Matter, Appointment } from '@/types/crm'
 import { toast } from '@/components/ui/sonner'
 import { X, ChevronRight, ChevronDown } from 'lucide-react'
+import { CustomSelect } from '@/components/ui/custom/custom-select'
 
 interface ClientProfileModalProps {
   isOpen: boolean
@@ -462,15 +463,12 @@ export function ClientProfileModal({
                   <label className="block text-sm font-semibold text-[#111827] mb-1.5">
                     Communication type
                   </label>
-                  <select
+                  <CustomSelect
                     value={commType}
-                    onChange={(e) => setCommType(e.target.value)}
-                    className="w-full bg-[#ebf3fc] border border-[#d2e3f8] text-[#1c385c] rounded-lg px-3.5 py-2.5 text-sm font-medium outline-none cursor-pointer"
-                  >
-                    <option value="Phone call">Phone call</option>
-                    <option value="Email">Email</option>
-                    <option value="In-person meeting">In-person meeting</option>
-                  </select>
+                    options={["Phone call", "Email", "In-person meeting"]}
+                    onChange={(val) => setCommType(val)}
+                    triggerClassName="w-full bg-[#ebf3fc] border-[#d2e3f8] text-[#1c385c] rounded-lg px-3.5 py-2 text-sm font-medium"
+                  />
                 </div>
 
                 <div>

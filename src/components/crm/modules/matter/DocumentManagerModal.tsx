@@ -4,6 +4,7 @@ import { STAFF_MEMBERS, TODAY } from '@/data/mockData'
 import { addDays } from '@/lib/crmUtils'
 import { toast } from '@/components/ui/sonner'
 import { X, FileCheck, UploadCloud, AlertCircle } from 'lucide-react'
+import { CustomSelect } from '@/components/ui/custom/custom-select'
 
 import { documentManagerZodSchema } from './matter.validation'
 
@@ -105,24 +106,25 @@ export function DocumentManagerModal({
 
           <div>
             <label className="block font-semibold text-[#202d2d] mb-1">Document Category</label>
-            <select
+            <CustomSelect
               value={kind}
-              onChange={(e) => {
-                setKind(e.target.value)
+              options={[
+                { value: "Passport Copy", label: "Passport / Identity Document" },
+                { value: "Police Certificate", label: "Police Clearance Certificate" },
+                { value: "Language Test Result", label: "Language Test (IELTS / CELPIP / TEF)" },
+                { value: "Educational Credential Assessment", label: "ECA Report (WES / ICAS)" },
+                { value: "Proof of Funds", label: "Proof of Funds / Bank Certificate" },
+                { value: "Job Offer Letter", label: "Job Offer Letter & LMIA" },
+                { value: "T4 & Notice of Assessment", label: "CRA Notices of Assessment & T4s" },
+                { value: "Medical Exam Sheet", label: "eMedical Information Sheet" },
+                { value: "Other", label: "Other / Custom Document" }
+              ]}
+              onChange={(val) => {
+                setKind(val)
                 if (fieldErrors.kind) setFieldErrors((prev) => ({ ...prev, kind: '' }))
               }}
-              className="w-full p-2 border border-[#cbd5d1] rounded-md bg-white outline-none focus:border-[#246b54]"
-            >
-              <option value="Passport Copy">Passport / Identity Document</option>
-              <option value="Police Certificate">Police Clearance Certificate</option>
-              <option value="Language Test Result">Language Test (IELTS / CELPIP / TEF)</option>
-              <option value="Educational Credential Assessment">ECA Report (WES / ICAS)</option>
-              <option value="Proof of Funds">Proof of Funds / Bank Certificate</option>
-              <option value="Job Offer Letter">Job Offer Letter & LMIA</option>
-              <option value="T4 & Notice of Assessment">CRA Notices of Assessment & T4s</option>
-              <option value="Medical Exam Sheet">eMedical Information Sheet</option>
-              <option value="Other">Other / Custom Document</option>
-            </select>
+              triggerClassName="w-full border-[#cbd5d1] bg-white text-[#202d2d]"
+            />
           </div>
 
           {kind === 'Other' && (
@@ -186,27 +188,25 @@ export function DocumentManagerModal({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="block font-semibold text-[#202d2d] mb-1">Verification Status</label>
-              <select
+              <CustomSelect
                 value={status}
-                onChange={(e) => setStatus(e.target.value as any)}
-                className="w-full p-2 border border-[#cbd5d1] rounded-md bg-white outline-none focus:border-[#246b54]"
-              >
-                <option value="Pending">Pending Review</option>
-                <option value="Verified">Verified & Valid</option>
-                <option value="Rejected">Rejected / Re-upload Required</option>
-              </select>
+                options={[
+                  { value: "Pending", label: "Pending Review" },
+                  { value: "Verified", label: "Verified & Valid" },
+                  { value: "Rejected", label: "Rejected / Re-upload Required" }
+                ]}
+                onChange={(val) => setStatus(val as any)}
+                triggerClassName="w-full border-[#cbd5d1] bg-white text-[#202d2d]"
+              />
             </div>
             <div>
               <label className="block font-semibold text-[#202d2d] mb-1">Verified By</label>
-              <select
+              <CustomSelect
                 value={verifiedBy}
-                onChange={(e) => setVerifiedBy(e.target.value)}
-                className="w-full p-2 border border-[#cbd5d1] rounded-md bg-white outline-none focus:border-[#246b54]"
-              >
-                {STAFF_MEMBERS.map((s) => (
-                  <option key={s} value={s}>{s}</option>
-                ))}
-              </select>
+                options={STAFF_MEMBERS}
+                onChange={(val) => setVerifiedBy(val)}
+                triggerClassName="w-full border-[#cbd5d1] bg-white text-[#202d2d]"
+              />
             </div>
           </div>
 

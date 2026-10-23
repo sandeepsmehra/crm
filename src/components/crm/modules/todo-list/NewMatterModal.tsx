@@ -4,6 +4,7 @@ import { APPLICATION_TYPES, STAFF_MEMBERS, TODAY, docsFor, TASK_TEMPLATES } from
 import { newMatterZodSchema, newMatterYupSchema } from './todoList.validation'
 import { toast } from '@/components/ui/sonner'
 import { X, AlertCircle } from 'lucide-react'
+import { CustomSelect } from '@/components/ui/custom/custom-select'
 
 interface NewMatterModalProps {
   isOpen: boolean
@@ -195,22 +196,21 @@ export function NewMatterModal({
           {/* Client Selection */}
           <div>
             <label className="block font-semibold text-[#202d2d] mb-1">Client</label>
-            <select
+            <CustomSelect
               value={clientId}
-              onChange={(e) => {
-                setClientId(e.target.value)
+              options={clients.map((c) => ({
+                value: c.id,
+                label: `${c.name} · ${c.phone}`
+              }))}
+              onChange={(val) => {
+                setClientId(val)
                 if (fieldErrors.clientId) setFieldErrors((p) => ({ ...p, clientId: '' }))
               }}
-              className={`w-full p-2 border rounded-md bg-white outline-none transition-colors ${
+              invalid={!!fieldErrors.clientId}
+              triggerClassName={`w-full bg-white ${
                 fieldErrors.clientId ? 'border-red-500 bg-red-50/20' : 'border-[#cbd5d1]'
               }`}
-            >
-              {clients.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name} · {c.phone}
-                </option>
-              ))}
-            </select>
+            />
             {fieldErrors.clientId && (
               <p className="text-[12px] text-red-600 mt-1 font-medium flex items-center gap-1">
                 <span>•</span> {fieldErrors.clientId}
@@ -222,31 +222,24 @@ export function NewMatterModal({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="block font-semibold text-[#202d2d] mb-1">Matter Type</label>
-              <select
+              <CustomSelect
                 value={type}
-                onChange={(e) => setType(e.target.value)}
-                className="w-full p-2 border border-[#cbd5d1] rounded-md bg-white outline-none"
-              >
-                {APPLICATION_TYPES.map((t) => (
-                  <option key={t} value={t}>
-                    {t}
-                  </option>
-                ))}
-              </select>
+                options={APPLICATION_TYPES}
+                onChange={(val) => setType(val)}
+                triggerClassName="w-full border-[#cbd5d1] bg-white"
+              />
             </div>
             <div>
               <label className="block font-semibold text-[#202d2d] mb-1">Case Manager</label>
-              <select
+              <CustomSelect
                 value={owner}
-                onChange={(e) => setOwner(e.target.value)}
-                className="w-full p-2 border border-[#cbd5d1] rounded-md bg-white outline-none font-medium"
-              >
-                {STAFF_MEMBERS.map((s) => (
-                  <option key={s} value={s}>
-                    {s} ({getWorkload(s)} open tasks)
-                  </option>
-                ))}
-              </select>
+                options={STAFF_MEMBERS.map((s) => ({
+                  value: s,
+                  label: `${s} (${getWorkload(s)} open tasks)`
+                }))}
+                onChange={(val) => setOwner(val)}
+                triggerClassName="w-full border-[#cbd5d1] bg-white font-medium"
+              />
             </div>
           </div>
 
